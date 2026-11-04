@@ -1113,6 +1113,14 @@ button.m:disabled{opacity:0.65;cursor:not-allowed !important;transform:none !imp
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
         <span class="v-label">HAPUS</span>
       </button>
+      <button class="voxel-btn dock-tool" id="btn-undo" title="Urungkan Goresan (Ctrl+Z)" disabled style="opacity:0.4;cursor:not-allowed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        <span class="v-label">UNDO</span>
+      </button>
+      <button class="voxel-btn dock-tool" id="btn-redo" title="Ulangi Goresan (Ctrl+Y)" disabled style="opacity:0.4;cursor:not-allowed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+        <span class="v-label">REDO</span>
+      </button>
       <button class="voxel-btn dock-tool active" id="btn-grid" title="Garis Grid">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
         <span class="v-label">GRID</span>
@@ -1800,7 +1808,7 @@ function parseUrlCoords() {
       const lat = parseFloat(parts[1]);
       const lng = parseFloat(parts[2]);
       if (!isNaN(z) && !isNaN(lat) && !isNaN(lng)) {
-        const clampZ = Math.max(5, Math.min(19, z));
+        const clampZ = Math.max(12, Math.min(19, z));
         if (L.latLngBounds([[-18, 90], [14, 146]]).contains([lat, lng])) {
           return { center: [lat, lng], zoom: clampZ };
         }
@@ -1814,7 +1822,7 @@ function parseUrlCoords() {
   if (!isNaN(qx) && !isNaN(qy)) {
     const lat = qy * CELL + CELL / 2;
     const lng = qx * CELL + CELL / 2;
-    const clampZ = Math.max(4, Math.min(19, qz));
+    const clampZ = Math.max(12, Math.min(19, qz));
     if (L.latLngBounds([[-18, 90], [14, 146]]).contains([lat, lng])) {
       return { center: [lat, lng], zoom: clampZ };
     }
@@ -1824,7 +1832,7 @@ function parseUrlCoords() {
     if (lastSaved) {
       const parsed = JSON.parse(lastSaved);
       if (parsed && Array.isArray(parsed.center) && parsed.zoom) {
-        const clampZ = Math.max(4, Math.min(19, parsed.zoom));
+        const clampZ = Math.max(12, Math.min(19, parsed.zoom));
         if (L.latLngBounds([[-18, 90], [14, 146]]).contains(parsed.center)) {
           return { center: parsed.center, zoom: clampZ };
         }
@@ -2170,6 +2178,7 @@ function handleTemplateFile(file) {
       $('btn-template').classList.add('active');
       $('btn-template').classList.add('on');
       templateGrid.redraw();
+      saveActiveTemplate();
     };
     img.src = e.target.result;
   };
@@ -2247,6 +2256,7 @@ function rotateTemplate() {
   activeTemplate.grid = newGrid;
   $('template-title').textContent = `Template: ${newW}×${newH} sel`;
   templateGrid.redraw();
+  saveActiveTemplate();
   Sfx.click();
   toast('Template diputar 90° searah jarum jam');
 }
@@ -2264,6 +2274,7 @@ function flipTemplateHorizontal() {
 
   activeTemplate.grid = newGrid;
   templateGrid.redraw();
+  saveActiveTemplate();
   Sfx.click();
   toast('Template dicerminkan horizontal');
 }
@@ -2276,6 +2287,7 @@ function moveTemplateToCenter() {
   activeTemplate.anchorX = cx - Math.floor(activeTemplate.w / 2);
   activeTemplate.anchorY = cy - Math.floor(activeTemplate.h / 2);
   templateGrid.redraw();
+  saveActiveTemplate();
   Sfx.click();
   toast(`Template dipindahkan ke jangkar (${activeTemplate.anchorX}, ${activeTemplate.anchorY})`);
 }
@@ -2283,12 +2295,152 @@ function moveTemplateToCenter() {
 function removeTemplate() {
   if (!activeTemplate) return;
   activeTemplate = null;
+  saveActiveTemplate();
   $('template-widget').classList.remove('open');
   $('btn-template').classList.remove('active');
   $('btn-template').classList.remove('on');
   templateGrid.redraw();
   Sfx.erase();
   toast('Hamparan template dihapus');
+}
+
+// ---------- Simpan & Pulihkan Hamparan Template (Anti-Hilang saat Reload) ----------
+function saveActiveTemplate() {
+  if (!activeTemplate) {
+    try { localStorage.removeItem('np_active_template'); } catch (e) {}
+    return;
+  }
+  try {
+    const data = {
+      w: activeTemplate.w,
+      h: activeTemplate.h,
+      anchorX: activeTemplate.anchorX,
+      anchorY: activeTemplate.anchorY,
+      opacity: activeTemplate.opacity || 0.5,
+      grid: Array.from(activeTemplate.grid)
+    };
+    localStorage.setItem('np_active_template', JSON.stringify(data));
+  } catch (e) {}
+}
+
+function loadSavedTemplate() {
+  try {
+    const saved = localStorage.getItem('np_active_template');
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (parsed && parsed.w && parsed.h && Array.isArray(parsed.grid)) {
+      activeTemplate = {
+        w: parsed.w,
+        h: parsed.h,
+        anchorX: parsed.anchorX,
+        anchorY: parsed.anchorY,
+        opacity: parsed.opacity || 0.5,
+        grid: new Int8Array(parsed.grid)
+      };
+      if ($('template-title')) $('template-title').textContent = `Template: ${activeTemplate.w}×${activeTemplate.h} sel`;
+      if ($('template-widget')) $('template-widget').classList.add('open');
+      if ($('btn-template')) {
+        $('btn-template').classList.add('active');
+        $('btn-template').classList.add('on');
+      }
+      if ($('template-opacity-slider')) $('template-opacity-slider').value = Math.round((activeTemplate.opacity || 0.5) * 100);
+      if ($('template-opacity-val')) $('template-opacity-val').textContent = Math.round((activeTemplate.opacity || 0.5) * 100) + '%';
+      if (templateGrid) templateGrid.redraw();
+    }
+  } catch (e) {}
+}
+
+// ---------- Sistem Undo & Redo (Riwayat Goresan Pixel) ----------
+const undoStack = []; // Maksimal 30 riwayat goresan
+const redoStack = [];
+
+function updateUndoRedoUI() {
+  const btnUndo = $('btn-undo');
+  const btnRedo = $('btn-redo');
+  if (btnUndo) {
+    const canUndo = undoStack.length > 0;
+    btnUndo.disabled = !canUndo;
+    btnUndo.style.opacity = canUndo ? '1' : '0.4';
+    btnUndo.style.cursor = canUndo ? 'pointer' : 'not-allowed';
+  }
+  if (btnRedo) {
+    const canRedo = redoStack.length > 0;
+    btnRedo.disabled = !canRedo;
+    btnRedo.style.opacity = canRedo ? '1' : '0.4';
+    btnRedo.style.cursor = canRedo ? 'pointer' : 'not-allowed';
+  }
+}
+
+function undoPixel() {
+  if (undoStack.length === 0) return;
+  const stroke = undoStack.pop();
+  if (!stroke || !stroke.length) return;
+
+  let refundedStock = 0;
+  stroke.forEach(item => {
+    const k = item.key;
+    if (item.prevPx) {
+      px.set(k, item.prevPx);
+      queue.set(k, { x: item.x, y: item.y, c: item.prevPx.c, isNew: false });
+      if (delQueue.has(k)) delQueue.delete(k);
+      paintDirectToTile(item.x, item.y, PAL[item.prevPx.c]);
+    } else {
+      px.delete(k);
+      queue.delete(k);
+      delQueue.set(k, { x: item.x, y: item.y });
+      paintDirectToTile(item.x, item.y, null);
+      if (item.consumedStock || item.wasNew) refundedStock++;
+    }
+    ChunkCache.del(chunkKey(chunkCoord(item.x), chunkCoord(item.y)));
+  });
+
+  if (refundedStock > 0 && me) {
+    me.stock = Math.min(getMaxStock(), me.stock + refundedStock);
+  }
+
+  redoStack.push(stroke);
+  if (redoStack.length > 30) redoStack.shift();
+
+  Sfx.erase();
+  updateUndoRedoUI();
+  render();
+  toast('Undo: ' + stroke.length + ' pixel dibatalkan');
+}
+
+function redoPixel() {
+  if (redoStack.length === 0) return;
+  const stroke = redoStack.pop();
+  if (!stroke || !stroke.length) return;
+
+  let usedStock = 0;
+  stroke.forEach(item => {
+    const k = item.key;
+    if (item.newColor !== undefined && item.newColor !== null) {
+      px.set(k, { x: item.x, y: item.y, c: item.newColor });
+      if (delQueue.has(k)) delQueue.delete(k);
+      queue.set(k, { x: item.x, y: item.y, c: item.newColor, isNew: !!item.wasNew });
+      paintDirectToTile(item.x, item.y, PAL[item.newColor]);
+      if (item.consumedStock || item.wasNew) usedStock++;
+    } else if (item.isErase) {
+      px.delete(k);
+      queue.delete(k);
+      delQueue.set(k, { x: item.x, y: item.y });
+      paintDirectToTile(item.x, item.y, null);
+    }
+    ChunkCache.del(chunkKey(chunkCoord(item.x), chunkCoord(item.y)));
+  });
+
+  if (usedStock > 0 && me) {
+    me.stock = Math.max(0, me.stock - usedStock);
+  }
+
+  undoStack.push(stroke);
+  if (undoStack.length > 30) undoStack.shift();
+
+  Sfx.place();
+  updateUndoRedoUI();
+  render();
+  toast('Redo: ' + stroke.length + ' pixel dipulihkan');
 }
 
 // ---------- Time-lapse Area 14 Hari (Step 16) ----------
@@ -2635,6 +2787,10 @@ const ChunkCache = (() => {
     if (!dbPromise) {
       dbPromise = new Promise(resolve => {
         if (!window.indexedDB) return resolve(null);
+        let resolved = false;
+        const timer = setTimeout(() => {
+          if (!resolved) { resolved = true; resolve(null); }
+        }, 800);
         try {
           const req = indexedDB.open('pixeldunia_cache', 1);
           req.onupgradeneeded = e => {
@@ -2643,9 +2799,18 @@ const ChunkCache = (() => {
               db.createObjectStore('chunks', { keyPath: 'k' });
             }
           };
-          req.onsuccess = e => resolve(e.target.result);
-          req.onerror = () => resolve(null);
-        } catch (e) { resolve(null); }
+          req.onsuccess = e => {
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve(e.target.result); }
+          };
+          req.onerror = () => {
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve(null); }
+          };
+          req.onblocked = () => {
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve(null); }
+          };
+        } catch (e) {
+          if (!resolved) { resolved = true; clearTimeout(timer); resolve(null); }
+        }
       });
     }
     return dbPromise;
@@ -2657,15 +2822,29 @@ const ChunkCache = (() => {
         const db = await getDB();
         if (!db) return null;
         return new Promise(resolve => {
-          const tx = db.transaction('chunks', 'readonly');
-          const store = tx.objectStore('chunks');
-          const req = store.get(key);
-          req.onsuccess = () => {
-            const res = req.result;
-            if (res && (Date.now() - res.t < CACHE_TTL_MS)) resolve(res.p);
-            else resolve(null);
-          };
-          req.onerror = () => resolve(null);
+          let resolved = false;
+          const timer = setTimeout(() => {
+            if (!resolved) { resolved = true; resolve(null); }
+          }, 500);
+          try {
+            const tx = db.transaction('chunks', 'readonly');
+            const store = tx.objectStore('chunks');
+            const req = store.get(key);
+            req.onsuccess = () => {
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timer);
+                const res = req.result;
+                if (res && (Date.now() - res.t < CACHE_TTL_MS)) resolve(res.p);
+                else resolve(null);
+              }
+            };
+            req.onerror = () => {
+              if (!resolved) { resolved = true; clearTimeout(timer); resolve(null); }
+            };
+          } catch (e) {
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve(null); }
+          }
         });
       } catch (e) { return null; }
     },
@@ -2699,8 +2878,8 @@ const ChunkCache = (() => {
   };
 })();
 
-// Channel Realtime per chunk (maksimal 64 channel aktif per koneksi)
-const MAX_CHANNELS = 64;
+// Channel Realtime per chunk (maksimal 8 channel aktif di sekitar kursor untuk stabilitas websocket)
+const MAX_CHANNELS = 8;
 const activeChunkChannels = new Map(); // key -> SupabaseChannel
 
 function syncRealtimeChannels(visibleChunks, z) {
@@ -3755,7 +3934,8 @@ function handleDrawStart(latlng) {
         prevPx,
         prevQueue,
         prevDelQueue,
-        consumedStock: false
+        consumedStock: false,
+        isErase: true
       });
       render();
     }
@@ -3783,7 +3963,9 @@ function handleDrawStart(latlng) {
         prevPx,
         prevQueue,
         prevDelQueue,
-        consumedStock: wasNew
+        consumedStock: wasNew,
+        wasNew,
+        newColor: col
       });
       render();
     }
@@ -3821,7 +4003,8 @@ function handleDrawMove(latlng) {
           prevPx,
           prevQueue,
           prevDelQueue,
-          consumedStock: false
+          consumedStock: false,
+          isErase: true
         });
         changed = true;
       }
@@ -3892,7 +4075,9 @@ function handleDrawMove(latlng) {
           prevPx,
           prevQueue,
           prevDelQueue,
-          consumedStock: wasNew
+          consumedStock: wasNew,
+          wasNew,
+          newColor: col
         });
         changed = true;
       }
@@ -3909,9 +4094,15 @@ function handleDrawMove(latlng) {
 function handleDrawEnd() {
   if (isDrawing || currentStroke.length > 0) {
     isDrawing = false;
+    if (currentStroke.length > 0) {
+      undoStack.push([...currentStroke]);
+      if (undoStack.length > 30) undoStack.shift();
+      redoStack.length = 0;
+      updateUndoRedoUI();
+    }
     currentStroke = [];
     lastCell = null;
-    redraw();
+    // Hapus redraw() di sini agar tidak memicu flicker/kedip-kedip pada canvas grid
     render();
   }
 }
@@ -4151,6 +4342,26 @@ if ($('btn-pan')) $('btn-pan').onclick = () => { Sfx.click(); setMode('pan'); };
 if ($('btn-info')) $('btn-info').onclick = () => { Sfx.click(); setMode('info'); };
 if ($('btn-pipette')) $('btn-pipette').onclick = () => { Sfx.click(); setMode('pipette'); };
 $('btn-erase').onclick = () => { Sfx.click(); setMode('erase'); };
+
+if ($('btn-undo')) $('btn-undo').onclick = () => { undoPixel(); };
+if ($('btn-redo')) $('btn-redo').onclick = () => { redoPixel(); };
+
+// Pintasan Keyboard Undo (Ctrl+Z) dan Redo (Ctrl+Y / Ctrl+Shift+Z)
+window.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    if (e.shiftKey) {
+      e.preventDefault();
+      redoPixel();
+    } else {
+      e.preventDefault();
+      undoPixel();
+    }
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    redoPixel();
+  }
+});
 
 $('btn-grid').onclick = () => {
   Sfx.click();
@@ -5739,6 +5950,7 @@ if (templateOpacitySlider) {
       activeTemplate.opacity = val / 100;
       $('template-opacity-val').textContent = val + '%';
       templateGrid.redraw();
+      saveActiveTemplate();
     }
   };
 }
@@ -5914,12 +6126,16 @@ setTimeout(pollEventState, 500);
 
     setMe(playerState);
     load();
+    loadSavedTemplate();
+    updateUndoRedoUI();
   } catch (err) {
     console.error('Fatal init error:', err);
     if (!me) {
       setMe({ stock: 75, max_stock: 75, t: Date.now() });
     }
     load();
+    loadSavedTemplate();
+    updateUndoRedoUI();
   }
 })();
 
