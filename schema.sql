@@ -1,8 +1,14 @@
 -- Jalankan seluruh file ini di Supabase > SQL Editor.
 -- Aktifkan juga: Authentication > Sign In / Providers > "Allow anonymous sign-ins".
 
+-- Bersihkan fungsi terlebih dahulu untuk mencegah konflik tipe return dari migrasi lama
+drop function if exists refresh_heat() cascade;
+drop function if exists get_missions() cascade;
+drop function if exists claim_mission(text) cascade;
+drop function if exists get_player_profile(uuid) cascade;
+
 -- ===== PENGATURAN (ubah angka di sini kapan saja) =====
-create table config(
+create table if not exists config(
   id int primary key default 1 check (id = 1),
   max_stock int default 500,             -- stok maksimal
   start_stock int default 75,            -- stok pemain baru
@@ -29,9 +35,9 @@ create table config(
   invite_max_claimed int default 10,     -- batas klaim undangan (Step 19)
   invite_min_placed int default 100      -- syarat pixel teman (Step 19)
 );
-insert into config default values;
+insert into config default values on conflict (id) do nothing;
 
-create table pixels(
+create table if not exists pixels(
   x int, y int,
   c smallint not null check (c between 0 and 15),
   uid uuid, updated_at timestamptz default now(),
@@ -42,7 +48,7 @@ create table pixels(
 );
 create index if not exists idx_pixels_chunk on pixels(cx, cy);
 
-create table players(
+create table if not exists players(
   id uuid primary key,
   stock numeric not null,
   stock_at timestamptz default now(),
@@ -73,18 +79,25 @@ create table players(
 alter table config  enable row level security;
 alter table pixels  enable row level security;
 alter table players enable row level security;
+drop policy if exists r on config;
 create policy r on config  for select using (true);
+drop policy if exists r on pixels;
 create policy r on pixels  for select using (true);
+drop policy if exists r on players;
 create policy r on players for select using (id = auth.uid());
 -- Tidak ada policy insert/update: semua perubahan lewat fungsi di bawah.
 
-alter publication supabase_realtime add table pixels;
+do $$
+begin
+  alter publication supabase_realtime add table pixels;
+exception when others then null;
+end $$;
 
-create function jkt() returns date language sql stable as
+create or replace function jkt() returns date language sql stable as
 $$ select (now() at time zone 'Asia/Jakarta')::date $$;
 
 -- Hitung isi ulang stok (pecahan disimpan, jadi tidak ada yang hilang)
-create function refresh_player() returns players
+create or replace function refresh_player() returns players
 language plpgsql security definer set search_path = public as $$
 declare
   c config;
@@ -177,7 +190,7 @@ begin
   return p;
 end $$;
 
-create function get_state() returns jsonb
+create or replace function get_state() returns jsonb
 language sql security definer set search_path = public as
 $$ select to_jsonb(refresh_player()) $$;
 
@@ -191,7 +204,7 @@ language sql stable security definer set search_path = public as $$
     on p.cx = req.cx and p.cy = req.cy;
 $$;
 
-create function place_pixels(p jsonb) returns jsonb
+create or replace function place_pixels(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   me players;
@@ -345,7 +358,7 @@ begin
   return get_state();
 end $$;
 
-create function delete_pixels(p jsonb) returns jsonb
+create or replace function delete_pixels(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   me players;
@@ -392,7 +405,7 @@ begin
 end $$;
 
 -- Klaim harian: +50 pixel, ditambah 10 per hari beruntun (maks. 7 hari)
-create function claim_daily() returns jsonb
+create or replace function claim_daily() returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me players; s int;
 begin
@@ -439,6 +452,7 @@ on conflict (id) do update set
   reward_boost_min = excluded.reward_boost_min,
   title = excluded.title;
 
+drop function if exists get_missions() cascade;
 create or replace function get_missions() returns jsonb
 language sql stable security definer set search_path = public as $$
   select coalesce(jsonb_agg(to_jsonb(m)), '[]'::jsonb)
@@ -448,7 +462,8 @@ revoke execute on function get_missions() from public;
 grant execute on function get_missions() to anon, authenticated;
 
 -- Misi harian & jelajah (berdasarkan tabel missions)
-create function claim_mission(mid text) returns jsonb
+drop function if exists claim_mission(text) cascade;
+create or replace function claim_mission(mid text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   me players;
@@ -491,8 +506,8 @@ begin
 end $$;
 
 -- ===== Peringkat =====
-create index on players (total_placed desc);
-create index on players (day, day_placed desc);
+create index if not exists idx_players_total_placed on players (total_placed desc);
+create index if not exists idx_players_day_placed on players (day, day_placed desc);
 
 create or replace function set_nick(n text) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -518,7 +533,7 @@ begin
 end $$;
 
 -- kind = 'day' (hari ini, WIB) atau 'all' (sepanjang waktu). Mengembalikan 20 teratas + peringkat sendiri.
-create function get_leaderboard(kind text default 'all') returns jsonb
+create or replace function get_leaderboard(kind text default 'all') returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me players; res jsonb; rk int; mine bigint;
 begin
@@ -540,7 +555,7 @@ begin
 end $$;
 
 -- ===== Iklan berhadiah =====
-create function start_ad() returns jsonb
+create or replace function start_ad() returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me players; c config;
 begin
@@ -557,7 +572,7 @@ begin
   return get_state();
 end $$;
 
-create function claim_ad() returns jsonb
+create or replace function claim_ad() returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me players; c config;
 begin
@@ -584,6 +599,7 @@ create table if not exists roles (
   created_at timestamptz default now()
 );
 alter table roles enable row level security;
+drop policy if exists r_roles on roles;
 create policy r_roles on roles for select using (uid = auth.uid());
 
 create or replace function is_admin() returns boolean
@@ -602,7 +618,9 @@ create table if not exists reports (
   created_at timestamptz default now()
 );
 alter table reports enable row level security;
+drop policy if exists r_reports_admin on reports;
 create policy r_reports_admin on reports for all using (is_admin());
+drop policy if exists r_reports_user on reports;
 create policy r_reports_user on reports for select using (reporter_id = auth.uid());
 
 create table if not exists mod_logs (
@@ -614,6 +632,7 @@ create table if not exists mod_logs (
   created_at timestamptz default now()
 );
 alter table mod_logs enable row level security;
+drop policy if exists r_mod_logs on mod_logs;
 create policy r_mod_logs on mod_logs for select using (is_admin());
 
 create or replace function submit_report(px int, py int, p_reason text) returns jsonb
@@ -859,12 +878,16 @@ create table if not exists heat (
 
 create index if not exists idx_heat_level on heat(level);
 
+drop function if exists refresh_heat() cascade;
 create or replace function refresh_heat()
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   v_count_l0 int := 0;
   v_count_l1 int := 0;
+  v_tot_px bigint := 0;
+  v_tot_pl bigint := 0;
+  v_today_px bigint := 0;
 begin
   truncate table heat;
 
@@ -879,7 +902,6 @@ begin
   where updated_at >= (now() - interval '24 hours')
   group by 1, 2, 3
   having count(*) > 0;
-
   get diagnostics v_count_l0 = row_count;
 
   -- Level 1 (Zoom 10-15): Agregasi per 50 sel (0.05°)
@@ -893,13 +915,35 @@ begin
   where updated_at >= (now() - interval '24 hours')
   group by 1, 2, 3
   having count(*) > 0;
-
   get diagnostics v_count_l1 = row_count;
+
+  -- Perbarui statistik publik jika tabel stats ada (Step 15)
+  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'stats') then
+    select count(*) into v_tot_px from pixels;
+    select count(*) into v_tot_pl from players;
+    select count(*) into v_today_px from pixels where updated_at >= (now() at time zone 'Asia/Jakarta')::date;
+
+    insert into stats (id, total_pixels, total_players, today_pixels, updated_at)
+    values (1, v_tot_px, v_tot_pl, v_today_px, now())
+    on conflict (id) do update set
+      total_pixels = excluded.total_pixels,
+      total_players = excluded.total_players,
+      today_pixels = excluded.today_pixels,
+      updated_at = excluded.updated_at;
+  end if;
+
+  -- Perbarui peringkat tim provinsi jika fungsi refresh_team_board ada (Step 18)
+  if exists (select 1 from pg_proc where proname = 'refresh_team_board' and pronamespace = 'public'::regnamespace) then
+    perform refresh_team_board();
+  end if;
 
   return jsonb_build_object(
     'success', true,
     'level_0_cells', v_count_l0,
     'level_1_cells', v_count_l1,
+    'total_pixels', v_tot_px,
+    'total_players', v_tot_pl,
+    'today_pixels', v_today_px,
     'refreshed_at', now()
   );
 end $$;
@@ -1050,42 +1094,7 @@ grant execute on function get_event_state() to anon, authenticated;
 -- Step 13: Misi Jelajah, Wilayah Provinsi, Lencana & Profil
 -- ==============================================================================
 
--- 1. Tabel Missions sebagai Single Source of Truth
-create table if not exists missions (
-  id text primary key,
-  kind text not null default 'day_placed', -- 'day_placed', 'explore_regions'
-  need int not null,
-  reward_stock int not null default 0,
-  reward_boost_min int not null default 0,
-  title text not null
-);
-
-alter table missions enable row level security;
-drop policy if exists "missions_read_all" on missions;
-create policy "missions_read_all" on missions for select to public using (true);
-
-insert into missions (id, kind, need, reward_stock, reward_boost_min, title) values
-  ('m50', 'day_placed', 50, 50, 0, 'Pasang 50 pixel'),
-  ('m200', 'day_placed', 200, 0, 30, 'Pasang 200 pixel'),
-  ('m500', 'day_placed', 500, 150, 0, 'Pasang 500 pixel'),
-  ('m_explore_3', 'explore_regions', 3, 30, 15, 'Jelajah 3 provinsi')
-on conflict (id) do update set
-  kind = excluded.kind,
-  need = excluded.need,
-  reward_stock = excluded.reward_stock,
-  reward_boost_min = excluded.reward_boost_min,
-  title = excluded.title;
-
-create or replace function get_missions() returns jsonb
-language sql stable security definer set search_path = public as $$
-  select coalesce(jsonb_agg(to_jsonb(m)), '[]'::jsonb)
-  from (select * from missions order by need asc) m;
-$$;
-
-revoke execute on function get_missions() from public;
-grant execute on function get_missions() to anon, authenticated;
-
--- 2. Wilayah / Kotak Kasar 38 Provinsi Indonesia (aturan #10)
+-- 1. Wilayah / Kotak Kasar 38 Provinsi Indonesia (aturan #10)
 create table if not exists regions (
   id serial primary key,
   name text not null,
@@ -1284,67 +1293,8 @@ alter table stats enable row level security;
 drop policy if exists p_stats_read on stats;
 create policy p_stats_read on stats for select using (true);
 
-create or replace function refresh_heat()
-returns jsonb
-language plpgsql security definer set search_path = public as $$
-declare
-  v_count_l0 int := 0;
-  v_count_l1 int := 0;
-  v_tot_px bigint := 0;
-  v_tot_pl bigint := 0;
-  v_today_px bigint := 0;
-begin
-  truncate table heat;
-
-  -- Level 0 (Zoom 5-9): Agregasi per 500 sel (0.5°)
-  insert into heat (level, hx, hy, n)
-  select
-    0 as level,
-    floor(x::numeric / 500)::int as hx,
-    floor(y::numeric / 500)::int as hy,
-    count(*)::int as n
-  from pixels
-  where updated_at >= (now() - interval '24 hours')
-  group by 1, 2, 3
-  having count(*) > 0;
-  get diagnostics v_count_l0 = row_count;
-
-  -- Level 1 (Zoom 10-15): Agregasi per 50 sel (0.05°)
-  insert into heat (level, hx, hy, n)
-  select
-    1 as level,
-    floor(x::numeric / 50)::int as hx,
-    floor(y::numeric / 50)::int as hy,
-    count(*)::int as n
-  from pixels
-  where updated_at >= (now() - interval '24 hours')
-  group by 1, 2, 3
-  having count(*) > 0;
-  get diagnostics v_count_l1 = row_count;
-
-  -- Perbarui tabel stats untuk get_public_stats (Step 15)
-  select count(*) into v_tot_px from pixels;
-  select count(*) into v_tot_pl from players;
-  select count(*) into v_today_px from pixels where updated_at >= (now() at time zone 'Asia/Jakarta')::date;
-
-  insert into stats (id, total_pixels, total_players, today_pixels, updated_at)
-  values (1, v_tot_px, v_tot_pl, v_today_px, now())
-  on conflict (id) do update set
-    total_pixels = excluded.total_pixels,
-    total_players = excluded.total_players,
-    today_pixels = excluded.today_pixels,
-    updated_at = excluded.updated_at;
-
-  return jsonb_build_object(
-    'success', true,
-    'level_0_cells', v_count_l0,
-    'level_1_cells', v_count_l1,
-    'total_pixels', v_tot_px,
-    'total_players', v_tot_pl,
-    'today_pixels', v_today_px,
-    'refreshed_at', now()
-  );
-end $$;
+-- Inisialisasi penyegaran heatmap dan tabel stats
+select refresh_heat();
 
 create or replace function get_public_stats()
 returns jsonb
@@ -1663,54 +1613,8 @@ end $$;
 -- Inisialisasi awal data agregat tim
 select refresh_team_board();
 
--- Hubungkan penyegaran team_board ke fungsi refresh_heat() rutin (tiap 5 menit)
-create or replace function refresh_heat() returns void
-language plpgsql security definer set search_path = public as $$
-begin
-  -- Agregasi Level 0 (Ukuran 500 sel, radius 0.5 derajat)
-  insert into heat(level, hx, hy, n)
-  select
-    0 as level,
-    floor(x / 500.0)::int as hx,
-    floor(y / 500.0)::int as hy,
-    count(*)::int as n
-  from pixels
-  where updated_at >= now() - interval '24 hours'
-  group by 1, 2, 3
-  on conflict (level, hx, hy) do update set n = excluded.n;
-
-  delete from heat where level = 0 and (hx, hy) not in (
-    select floor(x / 500.0)::int, floor(y / 500.0)::int
-    from pixels
-    where updated_at >= now() - interval '24 hours'
-    group by 1, 2
-  );
-
-  -- Agregasi Level 1 (Ukuran 50 sel, radius 0.05 derajat)
-  insert into heat(level, hx, hy, n)
-  select
-    1 as level,
-    floor(x / 50.0)::int as hx,
-    floor(y / 50.0)::int as hy,
-    count(*)::int as n
-  from pixels
-  where updated_at >= now() - interval '24 hours'
-  group by 1, 2, 3
-  on conflict (level, hx, hy) do update set n = excluded.n;
-
-  delete from heat where level = 1 and (hx, hy) not in (
-    select floor(x / 50.0)::int, floor(y / 50.0)::int
-    from pixels
-    where updated_at >= now() - interval '24 hours'
-    group by 1, 2
-  );
-
-  -- Perbarui statistik publik (Step 15)
-  perform refresh_public_stats();
-
-  -- Perbarui peringkat tim provinsi (Step 18)
-  perform refresh_team_board();
-end $$;
+-- Segarkan seluruh agregasi (heatmap, stats publik, dan tim papan peringkat)
+select refresh_heat();
 
 -- 5. RPC untuk mengambil daftar provinsi (38 provinsi)
 create or replace function get_regions() returns jsonb
