@@ -1,0 +1,1791 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NusaPixel — Kanvas Voxel Kolaboratif Nusantara</title>
+<!-- PWA Integration -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#E8F0FE">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="NusaPixel">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- Google Fonts: Nunito & JetBrains Mono (design.md) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Supabase JS Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+
+<style>
+:root {
+  /* Token Warna Sesuai design.md (Voxel Gamified Isometric) */
+  --bg-primary: #E8F0FE;         /* Primary sky background */
+  --text-main: #2A2220;          /* Primary text color (charcoal/earth) */
+  --text-muted: #5D4037;         /* Warm earth bark brown */
+  --text-dim: #78716C;           /* Subtle slate brown */
+
+  --accent-mint: #69F0AE;        /* Primary accent / CTAs */
+  --accent-mint-dark: #00C853;   /* Tactile button shadow */
+  --cube-blue: #448AFF;          /* Secondary accent */
+  --cube-blue-dark: #2979FF;     /* Cube shadow */
+  --grass-green: #66BB6A;        /* Extended palette, decorative */
+  --grass-green-dark: #43A047;   /* Grass shadow */
+  --lava-orange: #FF7043;        /* Warm accent, call-to-action */
+  --gold-accent: #FFD23F;        /* Gamified trophies/badges */
+
+  /* Surface & Cards */
+  --surface-card: #FFFFFF;
+  --surface-subtle: #F8FAFC;
+  --card-border: #DDE3EA;
+  --card-border-strong: #CBD5E1;
+  --voxel-shadow: #CBD5E1;
+  --voxel-shadow-dark: #94A3B8;
+
+  /* Font Families */
+  --font-sans: 'Nunito', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Corner Radius (design.md: 8px base, up to 16px) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  min-height: 100dvh;
+  line-height: 1.6;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 12% 18%, rgba(68, 138, 255, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 88% 75%, rgba(102, 187, 106, 0.12) 0%, transparent 45%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(68, 138, 255, 0.065) 39px, rgba(68, 138, 255, 0.065) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(68, 138, 255, 0.065) 39px, rgba(68, 138, 255, 0.065) 40px);
+  background-size: auto, auto, 40px 40px, 40px 40px;
+}
+
+/* Container Pembatas Maksimal Sesuai design.md (1280px) */
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ==================== Header & Navigasi ==================== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 2px solid var(--card-border);
+  box-shadow: 0 4px 16px rgba(93, 64, 55, 0.05);
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+.nav-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: #E8F0FE;
+  border: 2px solid var(--cube-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 2px 0 #CBD5E1;
+  transition: transform 150ms ease;
+}
+
+.brand:hover .brand-icon {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.brand-text {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+
+.brand-text span {
+  color: var(--cube-blue);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.925rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: all 180ms ease;
+}
+
+.nav-links a:hover {
+  color: var(--cube-blue);
+  background: #E0E7FF;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-cta-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: var(--accent-mint);
+  color: #0b2918;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  border: 1.5px solid #2ecc71;
+  border-bottom: 3.5px solid var(--accent-mint-dark);
+  box-shadow: 0 3px 8px rgba(105, 240, 174, 0.4);
+  transition: all 150ms ease;
+}
+
+.btn-cta-nav:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(105, 240, 174, 0.5);
+}
+
+.btn-cta-nav:active {
+  transform: translateY(2px);
+  border-bottom-width: 1.5px;
+}
+
+/* Mobile Hamburger Toggle */
+.btn-mobile-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  border: 1.5px solid var(--card-border);
+  color: var(--text-main);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  box-shadow: 0 2px 0 var(--voxel-shadow);
+}
+
+.btn-mobile-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Mobile Nav Drawer */
+.mobile-nav-drawer {
+  display: none;
+  flex-direction: column;
+  background: #ffffff;
+  border-bottom: 2px solid var(--card-border);
+  padding: 1rem 1.25rem 1.25rem;
+  gap: 8px;
+  box-shadow: 0 8px 16px rgba(93, 64, 55, 0.08);
+}
+
+.mobile-nav-drawer.active {
+  display: flex;
+}
+
+.mobile-nav-drawer a {
+  color: var(--text-main);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-nav-drawer a:hover, .mobile-nav-drawer a:active {
+  background: #E0E7FF;
+  color: var(--cube-blue);
+  border-color: var(--cube-blue);
+}
+
+/* ==================== Hero Section (Asymmetric Voxel) ==================== */
+.hero-section {
+  padding: clamp(2.5rem, 5vw, 4.5rem) 0 clamp(2rem, 4vw, 3.5rem);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2.75rem;
+  align-items: center;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #E0E7FF;
+  color: var(--cube-blue);
+  border: 1.5px solid #C7D2FE;
+  border-radius: 999px;
+  font-size: 0.825rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin-bottom: 1.15rem;
+  box-shadow: 0 2px 6px rgba(68, 138, 255, 0.12);
+}
+
+.hero-badge-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--grass-green);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--grass-green);
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.hero-title {
+  font-size: clamp(2.15rem, 4.2vw, 3.4rem);
+  font-weight: 900;
+  line-height: 1.16;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin-bottom: 1.15rem;
+}
+
+.hero-title .highlight {
+  color: var(--cube-blue);
+  display: inline-block;
+}
+
+.hero-desc {
+  font-size: clamp(1.05rem, 1.8vw, 1.15rem);
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 56ch;
+  margin-bottom: 1.85rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.btn-hero-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 26px;
+  background: var(--accent-mint);
+  color: #0b2918;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  border: 1.5px solid #2ecc71;
+  border-bottom: 4px solid var(--accent-mint-dark);
+  box-shadow: 0 4px 12px rgba(105, 240, 174, 0.45);
+  transition: all 160ms ease;
+  min-height: 48px;
+}
+
+.btn-hero-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(105, 240, 174, 0.6);
+}
+
+.btn-hero-primary:active {
+  transform: translateY(2px);
+  border-bottom-width: 1.5px;
+}
+
+.btn-hero-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 22px;
+  background: #ffffff;
+  color: var(--text-main);
+  border: 2px solid var(--card-border-strong);
+  border-bottom: 4px solid var(--voxel-shadow);
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 160ms ease;
+  min-height: 48px;
+}
+
+.btn-hero-secondary:hover {
+  transform: translateY(-2px);
+  border-color: #94A3B8;
+  background: #F8FAFC;
+}
+
+.btn-hero-secondary:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.hero-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero-perk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #ffffff;
+  border: 1.5px solid var(--card-border);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  box-shadow: 0 2px 0 var(--voxel-shadow);
+}
+
+.hero-perk-pill svg {
+  flex-shrink: 0;
+}
+
+/* Voxel Hero Art Container (Isometric 3D) */
+.hero-art-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.voxel-island-svg {
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+  filter: drop-shadow(0 20px 25px rgba(93, 64, 55, 0.16));
+  animation: floatVoxel 6s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes floatVoxel {
+  0% { transform: translateY(0px) rotate(0deg); }
+  100% { transform: translateY(-12px) rotate(0.6deg); }
+}
+
+/* ==================== Live Stats Bar (design.md) ==================== */
+.stats-section {
+  padding: clamp(1.5rem, 3vw, 2.5rem) 0;
+}
+
+.stats-card {
+  background: #ffffff;
+  border: 2px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow: 0 6px 0 var(--voxel-shadow), 0 16px 28px rgba(68, 138, 255, 0.08);
+}
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1.5px solid var(--card-border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stats-header-title {
+  color: var(--text-main);
+  font-size: 0.95rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(102, 187, 106, 0.15);
+  color: #2E7D32;
+  border: 1px solid rgba(102, 187, 106, 0.4);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+.stats-pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--grass-green);
+  border-radius: 50%;
+  animation: pulseLight 1.8s infinite;
+}
+
+@keyframes pulseLight {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.4); }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.stat-item {
+  padding: 1.15rem;
+  background: var(--surface-subtle);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 0 var(--voxel-shadow);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--cube-blue);
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.stat-num {
+  font-family: var(--font-mono);
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.stat-num.accent { color: #16a34a; }
+.stat-num.blue { color: var(--cube-blue); }
+.stat-num.orange { color: var(--lava-orange); }
+
+.stat-footnote {
+  font-size: 0.775rem;
+  color: var(--text-dim);
+  margin-top: 5px;
+}
+
+/* ==================== 3 Langkah Gotong Royong ==================== */
+.steps-section {
+  padding: clamp(2.5rem, 5vw, 4rem) 0;
+}
+
+.section-title-wrap {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto clamp(2rem, 4vw, 3rem);
+}
+
+.section-tag {
+  color: var(--cube-blue);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.section-title {
+  font-size: clamp(1.75rem, 3.2vw, 2.35rem);
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.step-card {
+  background: #ffffff;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  position: relative;
+  box-shadow: 0 4px 0 var(--voxel-shadow), 0 8px 16px rgba(93, 64, 55, 0.04);
+  transition: all 180ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.step-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--cube-blue);
+  box-shadow: 0 6px 0 var(--voxel-shadow), 0 12px 20px rgba(68, 138, 255, 0.08);
+}
+
+.step-num-badge {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  margin-bottom: 12px;
+  width: fit-content;
+}
+
+.step-card:nth-child(1) .step-num-badge { background: #E0E7FF; color: var(--cube-blue); border: 1px solid #C7D2FE; }
+.step-card:nth-child(2) .step-num-badge { background: rgba(102, 187, 106, 0.15); color: #2E7D32; border: 1px solid rgba(102, 187, 106, 0.4); }
+.step-card:nth-child(3) .step-num-badge { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+
+.step-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.step-desc {
+  font-size: 0.925rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ==================== Fitur Unggulan (Asymmetric Grid design.md) ==================== */
+.features-section {
+  padding: clamp(2rem, 4vw, 3.5rem) 0;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1.5rem;
+}
+
+.feature-card {
+  background: #ffffff;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.25rem, 3vw, 1.85rem);
+  box-shadow: 0 4px 0 var(--voxel-shadow), 0 10px 20px rgba(93, 64, 55, 0.05);
+  transition: transform 180ms ease, border-color 180ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--cube-blue);
+  box-shadow: 0 6px 0 var(--voxel-shadow), 0 14px 24px rgba(68, 138, 255, 0.08);
+}
+
+.feature-card.highlight {
+  background: #F0F7FF;
+  border-color: #BAE6FD;
+}
+
+.feature-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  border: 1.5px solid transparent;
+}
+
+.feature-icon-box.purple { background: #EDE9FE; color: #7C3AED; border-color: #DDD6FE; }
+.feature-icon-box.green { background: #E8F5E9; color: var(--grass-green-dark); border-color: #C8E6C9; }
+.feature-icon-box.orange { background: #FFF3E0; color: #E65100; border-color: #FFE0B2; }
+.feature-icon-box.blue { background: #E0E7FF; color: var(--cube-blue); border-color: #C7D2FE; }
+
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 0.65rem;
+}
+
+.feature-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+  flex-grow: 1;
+}
+
+.feature-preview {
+  background: var(--surface-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--card-border-strong);
+  font-family: var(--font-mono);
+  font-size: 0.775rem;
+  color: var(--cube-blue);
+  word-break: break-word;
+}
+
+/* ==================== CTA Banner Section ==================== */
+.cta-banner-section {
+  padding: clamp(2.5rem, 5vw, 4.5rem) 0;
+}
+
+.cta-box {
+  background: linear-gradient(135deg, #448AFF 0%, #2979FF 100%);
+  border: 2px solid #2979FF;
+  border-radius: var(--radius-xl);
+  padding: clamp(2.25rem, 5vw, 3.5rem) clamp(1.25rem, 3vw, 2.5rem);
+  text-align: center;
+  box-shadow: 0 8px 0 #1565C0, 0 20px 32px rgba(68, 138, 255, 0.25);
+  position: relative;
+  overflow: hidden;
+  color: #ffffff;
+}
+
+.cta-box::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(105, 240, 174, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cta-box::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  left: -80px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(255, 210, 63, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cta-title {
+  font-size: clamp(1.8rem, 3.8vw, 2.5rem);
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 0.85rem;
+  letter-spacing: -0.5px;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-desc {
+  font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+  color: #E0E7FF;
+  max-width: 580px;
+  margin: 0 auto 1.85rem;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-cta-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 30px;
+  background: var(--accent-mint);
+  color: #0b2918;
+  font-size: 1.05rem;
+  font-weight: 900;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  border: 1.5px solid #2ecc71;
+  border-bottom: 4px solid var(--accent-mint-dark);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  transition: all 160ms ease;
+  min-height: 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-cta-large:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.btn-cta-large:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+/* ==================== Modal Pedoman Komunitas ==================== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(42, 34, 32, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-content {
+  background: #ffffff;
+  border: 2px solid var(--card-border-strong);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 0 var(--voxel-shadow-dark), 0 25px 40px rgba(42, 34, 32, 0.25);
+  color: var(--text-main);
+  animation: modalIn 220ms ease-out;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.5rem;
+  border-bottom: 1.5px solid var(--card-border);
+}
+
+.modal-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-close-modal {
+  background: var(--surface-subtle);
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.btn-close-modal:hover {
+  color: var(--text-main);
+  background: #E2E8F0;
+  border-color: var(--card-border-strong);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.modal-body h3 {
+  color: var(--cube-blue);
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 1.25rem 0 0.45rem;
+}
+
+.modal-body h3:first-child {
+  margin-top: 0;
+}
+
+.modal-body ul {
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.modal-body li {
+  margin-bottom: 4px;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1.5px solid var(--card-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ==================== Footer (Warm Light Neutral) ==================== */
+.site-footer {
+  background: #F1F5F9;
+  border-top: 2px solid var(--card-border);
+  padding: 2.5rem 0 2rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
+}
+
+.footer-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+.footer-nav {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+.footer-nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 150ms ease;
+}
+
+.footer-nav a:hover {
+  color: var(--cube-blue);
+}
+
+.footer-sub {
+  padding-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* ==================== Media Queries & Responsive Breakpoints ==================== */
+/* Tablet Breakpoint (< 900px) */
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .hero-art-wrap {
+    order: 2;
+    margin-top: 0.5rem;
+  }
+
+  .voxel-island-svg {
+    max-width: 360px;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile Breakpoint (< 768px) */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .btn-mobile-toggle {
+    display: flex;
+  }
+
+  .nav-wrap {
+    height: 58px;
+  }
+
+  .hero-section {
+    padding: 1.75rem 0 2rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-hero-primary, .btn-hero-secondary, .btn-cta-large {
+    width: 100%;
+  }
+
+  .hero-perks {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .hero-perk-pill {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .voxel-island-svg {
+    max-width: 290px;
+  }
+
+  .footer-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .footer-sub {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Header / Navigasi -->
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a href="beranda.html" class="brand" aria-label="NusaPixel Beranda">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" fill="#E8F0FE" stroke="#448AFF" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M12 2V22" stroke="#448AFF" stroke-width="1.5"/>
+          <path d="M12 12L21 7" stroke="#448AFF" stroke-width="1.5"/>
+          <path d="M12 12L3 7" stroke="#448AFF" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <span class="brand-text">NUSA<span>PIXEL</span></span>
+    </a>
+
+    <!-- Desktop Navigation Links -->
+    <ul class="nav-links">
+      <li><a href="#cara-main">Cara Main</a></li>
+      <li><a href="#fitur">Fitur Kanvas</a></li>
+      <li><a href="#statistik">Statistik Hidup</a></li>
+      <li><a href="javascript:void(0)" id="btn-open-rules">Aturan Komunitas</a></li>
+    </ul>
+
+    <!-- Header Right (CTA + Mobile Toggle) -->
+    <div class="nav-right">
+      <a href="index.html" class="btn-cta-nav">
+        <span>Buka Kanvas</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+      </a>
+      <button class="btn-mobile-toggle" id="btn-mobile-toggle" aria-label="Menu Navigasi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Drawer Menu -->
+  <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
+    <a href="#cara-main" class="mobile-nav-link">
+      <span>Cara Bermain</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    <a href="#fitur" class="mobile-nav-link">
+      <span>Fitur Kanvas</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    <a href="#statistik" class="mobile-nav-link">
+      <span>Statistik Hidup</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    <a href="javascript:void(0)" id="btn-mobile-rules" class="mobile-nav-link">
+      <span>Pedoman & Aturan Komunitas</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  </nav>
+</header>
+
+<main>
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          <span>KANVAS TERBUKA NUSANTARA</span>
+        </div>
+        <h1 class="hero-title">
+          Satu Kanvas Kolaboratif untuk <span class="highlight">Seluruh Indonesia</span>
+        </h1>
+        <p class="hero-desc">
+          Goreskan blok pixelmu di atas peta nyata Nusantara. Berkolaborasi dengan ribuan seniman lokal, taklukkan misi wilayah, dan bangun karya seni legendaris tanpa batas.
+        </p>
+        <div class="hero-actions">
+          <a href="index.html" class="btn-hero-primary">
+            <span>Mulai Menggambar</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
+          <button type="button" class="btn-hero-secondary" id="btn-hero-rules">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Pedoman Komunitas</span>
+          </button>
+        </div>
+        <div class="hero-perks">
+          <div class="hero-perk-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Bebas Masuk (Tamu / Google)</span>
+          </div>
+          <div class="hero-perk-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#448AFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Misi & Lencana 38 Provinsi</span>
+          </div>
+          <div class="hero-perk-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF7043" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            <span>PWA Layar Utama Ringan</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ilustrasi Pulau Voxel Isometrik 3D Nusantara (design.md) -->
+      <div class="hero-art-wrap">
+        <svg class="voxel-island-svg" viewBox="0 0 480 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="hudShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="rgba(44,62,80,0.15)"/>
+            </filter>
+            <filter id="glowMint" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#69F0AE"/>
+            </filter>
+            <linearGradient id="pencilWood" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#FCD34D"/>
+              <stop offset="100%" stop-color="#F59E0B"/>
+            </linearGradient>
+            <linearGradient id="riverGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#60A5FA"/>
+              <stop offset="100%" stop-color="#3B82F6"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Bayangan Pulau Utama -->
+          <ellipse cx="240" cy="365" rx="175" ry="22" fill="rgba(68, 138, 255, 0.16)"/>
+
+          <!-- Struktur Tebing Voxel (Cliff Tanah Bertingkat) -->
+          <g id="voxel-dirt-base">
+            <!-- Level 4 - Bedrock Bawah -->
+            <polygon points="120,270 240,335 240,360 120,295" fill="#2E1B15"/>
+            <polygon points="240,335 360,270 360,295 240,360" fill="#1C100C"/>
+
+            <!-- Level 3 - Deep Soil -->
+            <polygon points="80,225 240,310 240,335 80,250" fill="#3E2723"/>
+            <polygon points="240,310 400,225 400,250 240,335" fill="#2E1B15"/>
+
+            <!-- Level 2 - Sub Soil -->
+            <polygon points="80,195 240,280 240,310 80,225" fill="#4E342E"/>
+            <polygon points="240,280 400,195 400,225 240,310" fill="#3E2723"/>
+
+            <!-- Level 1 - Top Soil -->
+            <polygon points="80,165 240,250 240,280 80,195" fill="#5D4037"/>
+            <polygon points="240,250 400,165 400,195 240,280" fill="#4E342E"/>
+          </g>
+
+          <!-- Pinggiran Rumput (Grass Rim) -->
+          <g id="voxel-grass-rim">
+            <polygon points="80,165 240,250 240,258 80,173" fill="#43A047"/>
+            <polygon points="240,250 400,165 400,173 240,258" fill="#2E7D32"/>
+          </g>
+
+          <!-- Permukaan Rumput Utama (Grass Top Island) -->
+          <g id="voxel-grass-top">
+            <polygon points="80,165 240,80 400,165 240,250" fill="#66BB6A"/>
+          </g>
+
+          <!-- Kontur Air / Sungai Peta (Map Water Stream) -->
+          <g id="map-river">
+            <polygon points="175,130 195,120 220,150 200,160" fill="url(#riverGrad)" opacity="0.85"/>
+            <polygon points="200,160 220,150 245,185 225,195" fill="url(#riverGrad)" opacity="0.85"/>
+            <polygon points="225,195 245,185 285,220 265,230" fill="url(#riverGrad)" opacity="0.85"/>
+          </g>
+
+          <!-- Grid Peta OpenStreetMap Isometrik (OSM Map Tiles Grid) -->
+          <g id="map-grid-mesh" stroke="rgba(255, 255, 255, 0.55)" stroke-width="1" stroke-dasharray="2,3">
+            <line x1="120" y1="186" x2="280" y2="101"/>
+            <line x1="160" y1="207" x2="320" y2="122"/>
+            <line x1="200" y1="229" x2="360" y2="144"/>
+
+            <line x1="200" y1="101" x2="120" y2="144"/>
+            <line x1="240" y1="80" x2="160" y2="122"/>
+            <line x1="280" y1="101" x2="200" y2="144"/>
+            <line x1="320" y1="122" x2="240" y2="165"/>
+            <line x1="360" y1="144" x2="280" y2="186"/>
+          </g>
+
+          <!-- Marker Pin Peta 3D (Location Pin on Map) -->
+          <g id="voxel-map-pin" transform="translate(340, 120)">
+            <ellipse cx="0" cy="30" rx="9" ry="4" fill="rgba(30, 41, 59, 0.28)"/>
+            <line x1="0" y1="30" x2="0" y2="16" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+            <polygon points="-8,8 0,4 8,8 0,12" fill="#FF5252"/>
+            <polygon points="-8,8 0,12 0,20 -8,16" fill="#E53935"/>
+            <polygon points="0,12 8,8 8,16 0,20" fill="#C62828"/>
+            <circle cx="0" cy="8" r="2.5" fill="#FFFFFF"/>
+          </g>
+
+          <!-- Pixel Art yang Sedang Digambar di Atas Peta: Bendera Merah Putih & Pixel Komunitas -->
+          <g id="pixel-art-on-map">
+            <!-- PIXEL MERAH (BARIS 1) -->
+            <g transform="translate(145, 158)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#EF4444"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#DC2626"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#B91C1C"/>
+            </g>
+            <g transform="translate(168, 146)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#EF4444"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#DC2626"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#B91C1C"/>
+            </g>
+            <g transform="translate(191, 134)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#EF4444"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#DC2626"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#B91C1C"/>
+            </g>
+
+            <!-- PIXEL MERAH (BARIS 2) -->
+            <g transform="translate(132, 165)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#EF4444"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#DC2626"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#B91C1C"/>
+            </g>
+            <g transform="translate(155, 153)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#EF4444"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#DC2626"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#B91C1C"/>
+            </g>
+            <g transform="translate(178, 141)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#EF4444"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#DC2626"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#B91C1C"/>
+            </g>
+
+            <!-- PIXEL PUTIH (BARIS 3) -->
+            <g transform="translate(119, 172)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#FFFFFF"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#E2E8F0"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#CBD5E1"/>
+            </g>
+            <g transform="translate(142, 160)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#FFFFFF"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#E2E8F0"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#CBD5E1"/>
+            </g>
+            <g transform="translate(165, 148)">
+              <polygon points="0,7 13,0 26,7 13,14" fill="#FFFFFF"/>
+              <polygon points="0,7 13,14 13,20 0,13" fill="#E2E8F0"/>
+              <polygon points="13,14 26,7 26,13 13,20" fill="#CBD5E1"/>
+            </g>
+
+            <!-- PIXEL SEKITAR DARI KOMUNITAS -->
+            <g transform="translate(255, 160)">
+              <polygon points="0,6 11,0 22,6 11,12" fill="#448AFF"/>
+              <polygon points="0,6 11,12 11,17 0,11" fill="#2979FF"/>
+              <polygon points="11,12 22,6 22,11 11,17" fill="#1565C0"/>
+            </g>
+            <g transform="translate(275, 172)">
+              <polygon points="0,6 11,0 22,6 11,12" fill="#69F0AE"/>
+              <polygon points="0,6 11,12 11,17 0,11" fill="#00E676"/>
+              <polygon points="11,12 22,6 22,11 11,17" fill="#00C853"/>
+            </g>
+            <g transform="translate(220, 195)">
+              <polygon points="0,6 11,0 22,6 11,12" fill="#FFD23F"/>
+              <polygon points="0,6 11,12 11,17 0,11" fill="#F59E0B"/>
+              <polygon points="11,12 22,6 22,11 11,17" fill="#D97706"/>
+            </g>
+          </g>
+
+          <!-- KOTAK SELEKSI SEL AKTIF (Active Grid Cell Selector) -->
+          <g id="active-cell-selector" transform="translate(191, 134)" filter="url(#glowMint)">
+            <polygon points="0,7 13,0 26,7 13,14" fill="rgba(105, 240, 174, 0.45)" stroke="#69F0AE" stroke-width="2" stroke-dasharray="3,2"/>
+            <polyline points="-2,6 -2,3 2,1" stroke="#00E676" stroke-width="2" fill="none"/>
+            <polyline points="28,6 28,3 24,1" stroke="#00E676" stroke-width="2" fill="none"/>
+            <polyline points="-2,8 -2,12 2,14" stroke="#00E676" stroke-width="2" fill="none"/>
+            <polyline points="28,8 28,12 24,14" stroke="#00E676" stroke-width="2" fill="none"/>
+          </g>
+
+          <!-- PENSIL / STYLUS VOXEL 3D SEDANG MENGGAMBAR (Drawing Stylus in Action) -->
+          <g id="drawing-pencil" transform="translate(204, 82)">
+            <ellipse cx="6" cy="55" rx="14" ry="6" fill="rgba(15, 23, 42, 0.22)"/>
+
+            <!-- Ujung Cat Merah (Tip) -->
+            <polygon points="0,52 6,48 12,52 6,56" fill="#DC2626"/>
+            <polygon points="0,52 6,56 6,50 0,46" fill="#B91C1C"/>
+            <polygon points="6,56 12,52 12,46 6,50" fill="#991B1B"/>
+
+            <!-- Kayu Rautan Pensil (Wood Cone) -->
+            <polygon points="0,46 6,42 12,46 6,50" fill="#FDE68A"/>
+            <polygon points="0,46 6,50 14,24 8,20" fill="#FCD34D"/>
+            <polygon points="6,50 12,46 20,16 14,20" fill="#F59E0B"/>
+
+            <!-- Batang Hex Pensil Kuning Emas -->
+            <polygon points="8,20 14,24 28,-18 22,-22" fill="#FBBF24"/>
+            <polygon points="14,24 20,20 34,-14 28,-18" fill="#F59E0B"/>
+            <polygon points="20,20 24,16 38,-18 34,-14" fill="#D97706"/>
+
+            <!-- Cincin Metal Penghubung (Ferrule) -->
+            <polygon points="22,-22 28,-18 31,-24 25,-28" fill="#E2E8F0"/>
+            <polygon points="28,-18 34,-14 37,-20 31,-24" fill="#CBD5E1"/>
+
+            <!-- Karet Penghapus Pink (Eraser Top) -->
+            <polygon points="25,-28 31,-24 35,-32 29,-36" fill="#F472B6"/>
+            <polygon points="31,-24 37,-20 41,-28 35,-32" fill="#EC4899"/>
+            <polygon points="29,-36 35,-32 41,-28 35,-32" fill="#DB2777"/>
+
+            <!-- Kilatan Efek Partikel / Sparkles saat Menggambar -->
+            <g transform="translate(4, 52)">
+              <path d="M-8,-4 L-6,-4 L-6,-6 L-4,-4 L-2,-4 L-4,-2 L-4,0 L-6,-2 Z" fill="#FFD23F"/>
+              <path d="M12,-6 L14,-6 L14,-8 L16,-6 L18,-6 L16,-4 L16,-2 L14,-4 Z" fill="#69F0AE"/>
+              <rect x="-12" y="4" width="3" height="3" fill="#FFFFFF" rx="0.5"/>
+              <rect x="14" y="2" width="3" height="3" fill="#FF7043" rx="0.5"/>
+            </g>
+          </g>
+
+          <!-- FLOATING MINI PALETTE HUD (Palet Warna Floating UI) -->
+          <g id="palette-hud" transform="translate(36, 92)" filter="url(#hudShadow)">
+            <rect x="0" y="0" width="112" height="48" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+            <text x="12" y="16" fill="#64748B" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5">PALET AKTIF</text>
+            
+            <!-- Warna 1: Merah (Terpilih/Active) -->
+            <g transform="translate(12, 22)">
+              <rect x="0" y="0" width="15" height="15" rx="3.5" fill="#EF4444"/>
+              <rect x="-2" y="-2" width="19" height="19" rx="5" fill="none" stroke="#2563EB" stroke-width="2"/>
+              <circle cx="7.5" cy="7.5" r="2" fill="#FFFFFF"/>
+            </g>
+            <!-- Warna 2: Putih -->
+            <rect x="31" y="22" width="15" height="15" rx="3.5" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
+            <!-- Warna 3: Biru -->
+            <rect x="50" y="22" width="15" height="15" rx="3.5" fill="#448AFF"/>
+            <!-- Warna 4: Mint -->
+            <rect x="69" y="22" width="15" height="15" rx="3.5" fill="#69F0AE"/>
+            <!-- Warna 5: Gold -->
+            <rect x="88" y="22" width="15" height="15" rx="3.5" fill="#FFD23F"/>
+          </g>
+
+          <!-- FLOATING COORDINATE BADGE HUD (Live Draw Status Pill) -->
+          <g id="coord-hud" transform="translate(290, 52)" filter="url(#hudShadow)">
+            <rect x="0" y="0" width="155" height="42" rx="21" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+            <circle cx="18" cy="21" r="5" fill="#22C55E"/>
+            <circle cx="18" cy="21" r="8" fill="none" stroke="#22C55E" stroke-width="1.5" opacity="0.6"/>
+            <text x="32" y="17" fill="#0F172A" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="10" font-weight="800">Menggambar Peta</text>
+            <text x="32" y="30" fill="#64748B" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="8.5" font-weight="600">Jakarta · 106.845° BT</text>
+          </g>
+
+          <!-- Awan Voxel Melayang Halus -->
+          <g transform="translate(45, 55)" opacity="0.9">
+            <polygon points="0,12 20,2 40,12 20,22" fill="#FFFFFF"/>
+            <polygon points="0,12 20,22 20,28 0,18" fill="#E2E8F0"/>
+            <polygon points="20,22 40,12 40,18 20,28" fill="#CBD5E1"/>
+          </g>
+          <g transform="translate(380, 190)" opacity="0.85">
+            <polygon points="0,10 16,2 32,10 16,18" fill="#FFFFFF"/>
+            <polygon points="0,10 16,18 16,24 0,16" fill="#E2E8F0"/>
+            <polygon points="16,18 32,10 32,16 16,24" fill="#CBD5E1"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Stats Bar (design.md) -->
+  <section class="stats-section" id="statistik">
+    <div class="container">
+      <div class="stats-card">
+        <div class="stats-header">
+          <div class="stats-header-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#448AFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Statistik Langsung Kanvas Nusantara</span>
+          </div>
+          <div class="stats-live-pill">
+            <span class="stats-pulse-dot"></span>
+            <span id="stats-status">Sinkron Otomatis</span>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <!-- Total Pixel -->
+          <div class="stat-item">
+            <div class="stat-label">Total Pixel Dipasang</div>
+            <div class="stat-num accent" id="val-total-pixels">...</div>
+            <div class="stat-footnote">Goresan permanen di peta Indonesia</div>
+          </div>
+          <!-- Total Pemain -->
+          <div class="stat-item">
+            <div class="stat-label">Seniman Nusantara Terdaftar</div>
+            <div class="stat-num blue" id="val-total-players">...</div>
+            <div class="stat-footnote">Dari Sabang hingga Merauke</div>
+          </div>
+          <!-- Pixel Hari Ini -->
+          <div class="stat-item">
+            <div class="stat-label">Aktivitas Pixel Hari Ini</div>
+            <div class="stat-num orange" id="val-today-pixels">...</div>
+            <div class="stat-footnote">Waktu Indonesia Barat (WIB)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cara Main / 3 Langkah Gotong Royong -->
+  <section class="steps-section" id="cara-main">
+    <div class="container">
+      <div class="section-title-wrap">
+        <span class="section-tag">CARA BERGABUNG</span>
+        <h2 class="section-title">3 Langkah Menghiasi Nusantara</h2>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <span class="step-num-badge">LANGKAH 01</span>
+          <h3 class="step-title">Pilih Lokasi & Provinsi</h3>
+          <p class="step-desc">
+            Buka peta interaktif, telusuri provinsi asalmu atau landmark impianmu, lalu zoom lebih dekat ke level blok untuk mulai menggambar.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-num-badge">LANGKAH 02</span>
+          <h3 class="step-title">Goreskan Pixel Warna</h3>
+          <p class="step-desc">
+            Pilih warna favorit dari palet voxel, ketuk satu per satu atau gunakan mode seret/swap untuk mewarnai garis secara instan dan rapi.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-num-badge">LANGKAH 03</span>
+          <h3 class="step-title">Klaim Misi & Lencana</h3>
+          <p class="step-desc">
+            Selesaikan misi harian untuk mengisi ulang stok pixel, buka lencana prestasi eksklusif, dan pamerkan lencanamu di samping nama profil!
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fitur Unggulan (Asymmetric Grid design.md) -->
+  <section class="features-section" id="fitur">
+    <div class="container">
+      <div class="section-title-wrap">
+        <span class="section-tag">FITUR UTAMA</span>
+        <h2 class="section-title">Dibangun untuk Kolaborasi Nyata</h2>
+      </div>
+
+      <div class="features-grid">
+        <!-- Fitur 1 (Lebar) -->
+        <div class="feature-card highlight">
+          <div class="feature-icon-box purple">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+              <line x1="8" y1="2" x2="8" y2="18"></line>
+              <line x1="16" y1="6" x2="16" y2="22"></line>
+            </svg>
+          </div>
+          <h3 class="feature-title">Peta Geografis Terpadu OpenStreetMap</h3>
+          <p class="feature-desc">
+            Bukan sekadar kanvas datar biasa. Seluruh 38 provinsi di Indonesia terbagi dalam grid berukuran presisi sekitar 110 meter per blok pixel. Jelajahi landmark bersejarah, kota kelahiranmu, hingga pulau terluar dengan transisi zoom mulus.
+          </p>
+          <div class="feature-preview">
+            &gt; Koordinat: 94.5° BT s/d 141.5° BT &bull; Zoom 6 (Nusantara) hingga Zoom 18 (Blok Detail)
+          </div>
+        </div>
+
+        <!-- Fitur 2 -->
+        <div class="feature-card">
+          <div class="feature-icon-box green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="7"></circle>
+              <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+            </svg>
+          </div>
+          <h3 class="feature-title">Misi Jelajah & Koleksi Lencana</h3>
+          <p class="feature-desc">
+            Selesaikan tantangan harian dan jelajahi 3 provinsi berbeda setiap hari untuk membuka lencana profil prestisius dengan visual menyala serta booster isi ulang stok instan.
+          </p>
+          <div class="feature-preview">
+            &gt; Hadiah Misi: +25 s/d +150 Stok Pixel &bull; Booster Refill 2x Lipat
+          </div>
+        </div>
+
+        <!-- Fitur 3 -->
+        <div class="feature-card">
+          <div class="feature-icon-box orange">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-title">Anti-Vandalisme & Tingkat Kepercayaan</h3>
+          <p class="feature-desc">
+            Sistem Trust Level otomatis membedakan pemain setia dari perusak. Akun baru dibatasi pada batas wajar, sementara pemain berpengalaman menikmati kapasitas hingga 500 pixel dan perlindungan proteksi.
+          </p>
+          <div class="feature-preview">
+            &gt; Level 1 (Pemula 75 px) &bull; Level 4 (Master 500 px) &bull; Audit Log Moderasi
+          </div>
+        </div>
+
+        <!-- Fitur 4 -->
+        <div class="feature-card">
+          <div class="feature-icon-box blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h3 class="feature-title">Instalasi PWA & Hemat Kuota Ringan</h3>
+          <p class="feature-desc">
+            Dapat dipasang langsung ke layar beranda ponselmu tanpa perlu toko aplikasi. Cache cerdas IndexedDB dan Service Worker memastikan pemuatan instan tanpa mengunduh ulang data peta secara boros.
+          </p>
+          <div class="feature-preview">
+            &gt; Stale-While-Revalidate App Shell &bull; Pengurangan Kuota Egress &gt; 90%
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Box Section (design.md) -->
+  <section class="cta-banner-section">
+    <div class="container">
+      <div class="cta-box">
+        <h2 class="cta-title">Siap Menorehkan Jejakmu di Peta?</h2>
+        <p class="cta-desc">
+          Buka kanvas sekarang juga. Tidak ada registrasi berbelit—cukup masuk dan mulai menggambar bersama komunitasmu.
+        </p>
+        <a href="index.html" class="btn-cta-large" style="margin: 0 auto;">
+          <span>Buka Kanvas Peta Sekarang</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal Pedoman Komunitas -->
+<div class="modal-overlay" id="rules-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#448AFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <span>Pedoman & Aturan Komunitas</span>
+      </div>
+      <button type="button" class="btn-close-modal" id="btn-close-rules" aria-label="Tutup Modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <h3>1. Prinsip Kolaborasi Gotong Royong</h3>
+      <p>
+        Kanvas NusaPixel adalah milik bersama seluruh rakyat Indonesia. Semua pemain bebas menggambar di titik mana pun tanpa klaim kepemilikan teritori yang bersifat permanen atau eksklusif. Kami mendorong karya bernuansa seni budaya, landmark, dan kreativitas positif.
+      </p>
+
+      <h3>2. Konten Terlarang (Zero Tolerance)</h3>
+      <p>Pemain dilarang keras membuat atau memfasilitasi:</p>
+      <ul>
+        <li><strong>Pornografi & NSFW:</strong> Gambar tidak senonoh atau eksplisit.</li>
+        <li><strong>Ujaran Kebencian & SARA:</strong> Simbol atau teks yang merendahkan suku, agama, ras, atau golongan.</li>
+        <li><strong>Simbol Ekstremisme:</strong> Lambang organisasi terlarang atau fasisme.</li>
+        <li><strong>Doxxing:</strong> Nomor telepon, identitas pribadi (KTP), atau alamat rumah.</li>
+        <li><strong>Vandalisme Hitam Massal:</strong> Menutup karya secara agresif tanpa bentuk seni.</li>
+      </ul>
+
+      <h3>3. Larangan Bot & Otomasi</h3>
+      <p>
+        Semua pixel harus dipasang manual oleh manusia. Penggunaan bot headless, skrip otomatisasi multi-akun, atau alat auto-clicker akan dicekal oleh sistem pertahanan server.
+      </p>
+
+      <h3>4. Sistem Moderasi</h3>
+      <p>
+        Setiap pemain dapat melaporkan pixel yang melanggar melalui tombol "Lapor" di peta. Moderator memiliki wewenang untuk menghapus pixel pelanggar, membatalkan kontribusi perusak, dan membekukan akun secara permanen.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-hero-primary" id="btn-dismiss-rules" style="padding: 10px 24px; font-size: 0.95rem;">
+        Saya Mengerti & Setuju
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Footer (design.md) -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-wrap">
+      <div class="footer-brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" fill="#E8F0FE" stroke="#448AFF" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        <span>NusaPixel &bull; Kanvas Seni Gotong Royong Indonesia</span>
+      </div>
+      <ul class="footer-nav">
+        <li><a href="index.html">Buka Peta</a></li>
+        <li><a href="javascript:void(0)" id="btn-footer-rules">Aturan Komunitas</a></li>
+        <li><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></li>
+      </ul>
+    </div>
+    <div class="footer-sub">
+      <div>&copy; 2026 NusaPixel. Data peta &copy; kontributor OpenStreetMap.</div>
+      <div>Desain Voxel Gamified Isometric &bull; PWA Siap Pakai</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ====== KREDENSIAL SUPABASE (Sinkron Dengan index.html) ======
+const SB_URL = 'https://PROJECT-ID.supabase.co';
+const SB_KEY = 'ANON-PUBLIC-KEY';
+const sb = (typeof supabase !== 'undefined' && supabase.createClient) 
+  ? supabase.createClient(SB_URL, SB_KEY) 
+  : null;
+
+// Mobile Nav Drawer Toggle
+const mobileToggle = document.getElementById('btn-mobile-toggle');
+const mobileDrawer = document.getElementById('mobile-nav-drawer');
+
+if (mobileToggle && mobileDrawer) {
+  mobileToggle.onclick = () => {
+    mobileDrawer.classList.toggle('active');
+  };
+
+  document.querySelectorAll('.mobile-nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      mobileDrawer.classList.remove('active');
+    });
+  });
+}
+
+// Modal Interaksi Pedoman Komunitas
+const modal = document.getElementById('rules-modal');
+const openBtn1 = document.getElementById('btn-open-rules');
+const openBtn2 = document.getElementById('btn-hero-rules');
+const openBtn3 = document.getElementById('btn-footer-rules');
+const openBtn4 = document.getElementById('btn-mobile-rules');
+const closeBtn = document.getElementById('btn-close-rules');
+const dismissBtn = document.getElementById('btn-dismiss-rules');
+
+function openRules() { 
+  if (modal) modal.classList.add('active'); 
+  if (mobileDrawer) mobileDrawer.classList.remove('active');
+}
+function closeRules() { 
+  if (modal) modal.classList.remove('active'); 
+}
+
+if (openBtn1) openBtn1.onclick = openRules;
+if (openBtn2) openBtn2.onclick = openRules;
+if (openBtn3) openBtn3.onclick = openRules;
+if (openBtn4) openBtn4.onclick = openRules;
+if (closeBtn) closeBtn.onclick = closeRules;
+if (dismissBtn) dismissBtn.onclick = closeRules;
+if (modal) {
+  modal.onclick = (e) => { if (e.target === modal) closeRules(); };
+}
+
+// Format Angka Lokalisasi Indonesia
+function fmt(num) {
+  return new Intl.NumberFormat('id-ID').format(num || 0);
+}
+
+// Animasi Angka Menghitung (Count-Up)
+function animateCount(elemId, targetVal, durationMs = 1200) {
+  const elem = document.getElementById(elemId);
+  if (!elem) return;
+  const start = 0;
+  const startTime = performance.now();
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / durationMs, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(start + (targetVal - start) * ease);
+    elem.textContent = fmt(current);
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      elem.textContent = fmt(targetVal);
+    }
+  }
+  requestAnimationFrame(update);
+}
+
+// Memuat Statistik Publik via RPC get_public_stats (Step 15)
+async function loadPublicStats() {
+  const statusEl = document.getElementById('stats-status');
+
+  // Mode Demo Lokal jika Supabase belum disambungkan
+  if (!sb || SB_URL.includes('PROJECT-ID')) {
+    animateCount('val-total-pixels', 184520);
+    animateCount('val-total-players', 3420);
+    animateCount('val-today-pixels', 12890);
+    if (statusEl) statusEl.textContent = 'Mode Demo';
+    return;
+  }
+
+  try {
+    const { data, error } = await sb.rpc('get_public_stats');
+    if (error || !data) {
+      console.warn('[Stats] Gagal memuat RPC:', error);
+      animateCount('val-total-pixels', 12450);
+      animateCount('val-total-players', 420);
+      animateCount('val-today-pixels', 1850);
+      if (statusEl) statusEl.textContent = 'Data Standar';
+      return;
+    }
+
+    animateCount('val-total-pixels', Number(data.total_pixels || 0));
+    animateCount('val-total-players', Number(data.total_players || 0));
+    animateCount('val-today-pixels', Number(data.today_pixels || 0));
+    if (statusEl) statusEl.textContent = 'Sinkron Terkini';
+  } catch (err) {
+    console.warn('[Stats] Error jaringan:', err);
+    animateCount('val-total-pixels', 12450);
+    animateCount('val-total-players', 420);
+    animateCount('val-today-pixels', 1850);
+  }
+}
+
+// Jalankan saat dokumen siap
+window.addEventListener('DOMContentLoaded', () => {
+  loadPublicStats();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.warn('[PWA] SW register error:', err);
+    });
+  }
+});
+</script>
+</body>
+</html>

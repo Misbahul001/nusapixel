@@ -1,0 +1,25 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/"
+  to = "/beranda.html"
+  status = 200
+
+[[redirects]]
+  from = "/game"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/play"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"

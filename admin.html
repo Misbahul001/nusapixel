@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>NusaPixel - Panel Moderasi & Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#120e24;
+  --surface:#1c1735;
+  --surface-alt:#241d44;
+  --border:#3a2f64;
+  --fg:#f0edff;
+  --mut:#9387bb;
+  --ac:#4ade80;
+  --danger:#ef4444;
+  --warn:#f59e0b;
+  --blue:#38bdf8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Nunito',sans-serif;
+  background:var(--bg);
+  color:var(--fg);
+  min-height:100vh;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.container{
+  width:100%;
+  max-width:960px;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-bottom:5px solid #0f0b1f;
+  border-radius:14px;
+  padding:20px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.5);
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+  padding-bottom:16px;
+  border-bottom:2px solid var(--border);
+  margin-bottom:20px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-badge{
+  background:#ef4444;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  padding:3px 8px;
+  border-radius:6px;
+  border-bottom:2px solid #991b1b;
+}
+h1{font-size:20px;font-weight:900;letter-spacing:0.5px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tab-btn{
+  background:var(--surface-alt);
+  color:var(--mut);
+  border:2px solid var(--border);
+  border-bottom:3px solid #16122b;
+  border-radius:8px;
+  padding:8px 16px;
+  font-family:'Nunito',sans-serif;
+  font-weight:900;
+  font-size:13px;
+  cursor:pointer;
+  transition:all .1s ease;
+}
+.tab-btn:hover{color:#fff;border-color:var(--blue)}
+.tab-btn.active{
+  background:#3b82f6;
+  color:#fff;
+  border-color:#60a5fa;
+  border-bottom:3px solid #1d4ed8;
+}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.card{
+  background:var(--surface-alt);
+  border:2px solid var(--border);
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:16px;
+}
+.card h2{font-size:16px;font-weight:900;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase}
+input,select,textarea{
+  background:#141026;
+  border:2px solid var(--border);
+  border-radius:6px;
+  padding:8px 12px;
+  color:#fff;
+  font-family:'Nunito',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+.btn{
+  background:var(--ac);
+  color:#06230f;
+  border:2px solid #86efac;
+  border-bottom:3px solid #15803d;
+  border-radius:6px;
+  padding:8px 16px;
+  font-family:'Nunito',sans-serif;
+  font-weight:900;
+  font-size:13px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  transition:transform .08s ease;
+}
+.btn:active{transform:translateY(2px);border-bottom-width:1px}
+.btn.danger{background:var(--danger);color:#fff;border-color:#fca5a5;border-bottom-color:#991b1b}
+.btn.warn{background:var(--warn);color:#1c1301;border-color:#fde68a;border-bottom-color:#b45309}
+.btn.secondary{background:var(--surface-alt);color:#fff;border-color:var(--border);border-bottom-color:#141026}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-weight:900;color:var(--mut);text-transform:uppercase;font-size:11px}
+tr:hover{background:rgba(255,255,255,0.02)}
+.badge{padding:3px 7px;border-radius:4px;font-size:10px;font-weight:900;display:inline-block}
+.badge.pending{background:#78350f;color:#fef3c7}
+.badge.resolved{background:#064e3b;color:#a7f3d0}
+.badge.dismissed{background:#374151;color:#d1d5db}
+#toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#1e1b4b;
+  border:2px solid var(--blue);
+  border-bottom:4px solid #1e40af;
+  color:#fff;
+  padding:10px 20px;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:900;
+  display:none;
+  box-shadow:0 10px 25px rgba(0,0,0,0.6);
+  z-index:999;
+}
+.login-screen{
+  text-align:center;
+  padding:40px 20px;
+}
+.empty-notice{
+  text-align:center;
+  padding:30px;
+  color:var(--mut);
+  font-weight:700;
+}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <h1>NusaPixel</h1>
+      <span class="brand-badge">MODERASI & ADMIN</span>
+    </div>
+    <div id="auth-info" style="display:flex;align-items:center;gap:12px">
+      <span id="user-email" style="font-size:12px;color:var(--mut);font-weight:800"></span>
+      <button class="btn secondary" id="btn-logout" style="padding:5px 12px;font-size:12px">Keluar</button>
+      <a href="index.html" class="btn secondary" style="padding:5px 12px;font-size:12px;text-decoration:none">Ke Peta</a>
+    </div>
+  </header>
+
+  <!-- Login Box jika belum autentikasi -->
+  <div id="login-panel" class="login-screen" style="display:none">
+    <h2 style="margin-bottom:8px">Masuk sebagai Administrator</h2>
+    <p style="color:var(--mut);margin-bottom:20px;font-size:13px">Halaman ini dilindungi. Hanya akun dengan peran 'admin' yang dapat mengakses fitur moderasi.</p>
+    <button class="btn" id="btn-google-login" style="padding:10px 20px;font-size:14px">Masuk dengan Google</button>
+    <div style="margin-top:20px;font-size:12px;color:var(--mut)">Atau gunakan token Supabase langsung jika menjalankan di lingkungan dev lokal.</div>
+  </div>
+
+  <!-- Panel Admin Utama -->
+  <div id="admin-panel" style="display:none">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-reports">Laporan Pemain (<span id="rep-count">0</span>)</button>
+      <button class="tab-btn" data-tab="tab-canvas">Operasi Area Kanvas</button>
+      <button class="tab-btn" data-tab="tab-player">Kelola Pemain</button>
+      <button class="tab-btn" data-tab="tab-logs">Log Aksi Moderasi</button>
+      <button class="tab-btn" data-tab="tab-metrics">Pemantauan Kuota & Metrik</button>
+    </div>
+
+    <!-- Tab 1: Laporan -->
+    <div class="tab-panel active" id="tab-reports">
+      <div class="card">
+        <h2>Daftar Laporan Pelanggaran</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Waktu</th>
+                <th>Koordinat</th>
+                <th>Target UID</th>
+                <th>Alasan</th>
+                <th>Status</th>
+                <th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="reports-list">
+              <tr><td colspan="7" class="empty-notice">Memuat data laporan...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Operasi Area Kanvas -->
+    <div class="tab-panel" id="tab-canvas">
+      <div class="card">
+        <h2>Hapus Pixel Area Persegi Panjang</h2>
+        <p style="color:var(--mut);font-size:12px;margin-bottom:14px">Hapus seluruh pixel dalam kotak batas (bounding box) untuk membersihkan vandalisme massal atau simbol terlarang.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Koordinat X1 (Min Lng / CELL)</label>
+            <input type="number" id="box-x1" placeholder="Contoh: 110000">
+          </div>
+          <div class="form-group">
+            <label>Koordinat Y1 (Min Lat / CELL)</label>
+            <input type="number" id="box-y1" placeholder="Contoh: -7000">
+          </div>
+          <div class="form-group">
+            <label>Koordinat X2 (Max Lng / CELL)</label>
+            <input type="number" id="box-x2" placeholder="Contoh: 110500">
+          </div>
+          <div class="form-group">
+            <label>Koordinat Y2 (Max Lat / CELL)</label>
+            <input type="number" id="box-y2" placeholder="Contoh: -6500">
+          </div>
+        </div>
+        <button class="btn danger" id="btn-delete-rect">Hapus Seluruh Pixel di Area Ini</button>
+      </div>
+    </div>
+
+    <!-- Tab 3: Kelola Pemain -->
+    <div class="tab-panel" id="tab-player">
+      <div class="card">
+        <h2>Tindakan Pemain</h2>
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>User UUID (ID Pemain)</label>
+            <input type="text" id="target-uid" placeholder="Contoh: 123e4567-e89b-12d3-a456-426614174000">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn danger" id="btn-ban-player">Blokir Pemain</button>
+          <button class="btn warn" id="btn-unban-player">Buka Blokir</button>
+          <button class="btn danger" id="btn-delete-player-px">Hapus Semua Pixel Milik Pemain Ini</button>
+          <button class="btn secondary" id="btn-reset-nick">Reset Nama Tampilan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Log Moderasi -->
+    <div class="tab-panel" id="tab-logs">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2>Riwayat Aksi Moderasi</h2>
+          <button class="btn secondary" id="btn-cleanup-logs" style="font-size:11px;padding:5px 10px">Bersihkan Log > 30 Hari</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Waktu</th>
+                <th>Admin</th>
+                <th>Aksi</th>
+                <th>Target</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody id="logs-list">
+              <tr><td colspan="6" class="empty-notice">Memuat riwayat log...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Pemantauan Kuota & Metrik (Step 5) -->
+    <div class="tab-panel" id="tab-metrics">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <h2>Pemantauan Kuota Supabase & Kapasitas</h2>
+          <button class="btn secondary" id="btn-refresh-metrics" style="padding:5px 12px;font-size:12px">Segarkan Data</button>
+        </div>
+
+        <div id="metrics-alert-box" style="display:none;margin-bottom:14px;padding:12px 14px;background:#7f1d1d;border:2px solid #ef4444;border-radius:8px;color:#fee2e2;font-size:13px;font-weight:800">
+          ⚠️ PERINGATAN: Penggunaan kuota telah melampaui 70% dari batas paket Gratis Supabase! Siapkan kenaikan ke paket Pro.
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:#141026;border:2px solid var(--border);border-radius:8px;padding:12px">
+            <span style="font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase">Ukuran Database</span>
+            <div style="font-size:22px;font-weight:900;margin-top:4px" id="metric-db-size">0 MB</div>
+            <div style="font-size:11px;color:var(--mut);margin-top:2px">Batas Free: 500 MB (<span id="metric-db-pct">0%</span>)</div>
+            <div style="background:#241d44;border-radius:4px;height:6px;width:100%;margin-top:6px;overflow:hidden">
+              <div id="metric-db-bar" style="background:var(--ac);height:100%;width:0%"></div>
+            </div>
+          </div>
+
+          <div style="background:#141026;border:2px solid var(--border);border-radius:8px;padding:12px">
+            <span style="font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase">Total Pixel di Peta</span>
+            <div style="font-size:22px;font-weight:900;margin-top:4px" id="metric-total-pixels">0</div>
+            <div style="font-size:11px;color:var(--mut);margin-top:2px">Estimasi data: ~100 B per baris</div>
+          </div>
+
+          <div style="background:#141026;border:2px solid var(--border);border-radius:8px;padding:12px">
+            <span style="font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase">Total Pemain Terdaftar</span>
+            <div style="font-size:22px;font-weight:900;margin-top:4px" id="metric-total-players">0</div>
+            <div style="font-size:11px;color:var(--mut);margin-top:2px">Hari ini aktif: <b id="metric-active-today">0</b></div>
+          </div>
+
+          <div style="background:#141026;border:2px solid var(--border);border-radius:8px;padding:12px">
+            <span style="font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase">Laporan Menunggu</span>
+            <div style="font-size:22px;font-weight:900;margin-top:4px;color:#fca5a5" id="metric-pending-reports">0</div>
+            <div style="font-size:11px;color:var(--mut);margin-top:2px">Perlu ditinjau moderator</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px;margin-bottom:10px">Batas Ambang Peringatan Paket Gratis (Free Tier)</h3>
+        <div style="overflow-x:auto;margin-bottom:16px">
+          <table>
+            <thead>
+              <tr>
+                <th>Komponen</th>
+                <th>Batas Gratis</th>
+                <th>Ambang Waspada (70%)</th>
+                <th>Tindakan Jika Tercapai</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Database Storage</b></td>
+                <td>500 MB</td>
+                <td>350 MB</td>
+                <td>Jalankan pembersihan log moderasi atau naik ke paket Pro</td>
+              </tr>
+              <tr>
+                <td><b>Egress (Bandwidth)</b></td>
+                <td>5 GB / bulan</td>
+                <td>3.5 GB</td>
+                <td>Aktifkan IndexedDB chunk client cache & kompresi respon</td>
+              </tr>
+              <tr>
+                <td><b>Koneksi Realtime</b></td>
+                <td>200 bersamaan</td>
+                <td>140 koneksi</td>
+                <td>Batas 64 channel per klien, naik paket Pro jika pemain simultan ramai</td>
+              </tr>
+              <tr>
+                <td><b>Pesan Realtime</b></td>
+                <td>100 pesan / detik</td>
+                <td>70 pesan / detik</td>
+                <td>Batch pixel per chunk per detik (sudah diterapkan di Step 2)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size:14px;margin-bottom:8px">Daftar Periksa Naik ke Paket Pro ($25 / bulan)</h3>
+        <ul style="padding-left:18px;font-size:12px;color:var(--mut);line-height:1.7">
+          <li><b>Kapan harus naik:</b> Salah satu dari: DB > 350 MB, Egress > 3.5 GB, atau Realtime connections > 150.</li>
+          <li><b>Apa yang didapat:</b> Database 8 GB, Egress 250 GB, 500 koneksi Realtime, 500 pesan/detik, tanpa jeda otomatis 7 hari.</li>
+          <li><b>Langkah migrasi:</b> Buka Supabase Dashboard > Organization / Billing > Upgrade to Pro ($25/bulan). Tidak ada perubahan kode pada aplikasi.</li>
+        </ul>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <b style="font-size:13px;color:var(--text)">Peta Panas Aktivitas (Step 10)</b>
+            <div style="font-size:11px;color:var(--mut)">Segarkan agregasi aktivitas 24 jam terakhir secara manual</div>
+          </div>
+          <button class="btn secondary" id="btn-refresh-heat">Segarkan Peta Panas</button>
+        </div>
+
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <b style="font-size:13px;color:var(--text)">Peringkat Tim Provinsi (Step 18)</b>
+            <div style="font-size:11px;color:var(--mut)">Segarkan tabel agregat peringkat tim 38 provinsi secara manual</div>
+          </div>
+          <button class="btn secondary" id="btn-refresh-team">Segarkan Peringkat Tim</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Supabase credentials sama dengan index.html
+const SB_URL = 'https://PROJECT-ID.supabase.co';
+const SB_KEY = 'ANON-PUBLIC-KEY';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// Tab switcher
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById(b.dataset.tab).classList.add('active');
+    if (b.dataset.tab === 'tab-logs') loadLogs();
+    if (b.dataset.tab === 'tab-metrics') loadMetrics();
+  };
+});
+
+// Autentikasi Admin
+async function checkAuth() {
+  if (SB_URL.includes('PROJECT-ID')) {
+    // Mode demo lokal
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    document.getElementById('user-email').textContent = 'Mode Demo Admin';
+    loadDemoData();
+    return;
+  }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('admin-panel').style.display = 'none';
+    return;
+  }
+
+  // Periksa apakah user memiliki peran admin
+  const { data: isAdmin, error } = await sb.rpc('is_admin');
+  if (error || !isAdmin) {
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('admin-panel').style.display = 'none';
+    document.getElementById('login-panel').innerHTML = `
+      <h2 style="color:var(--danger)">Akses Ditolak</h2>
+      <p style="color:var(--mut);margin:12px 0">Akun (${session.user.email || session.user.id}) bukan Administrator.</p>
+      <button class="btn secondary" onclick="sb.auth.signOut().then(()=>location.reload())">Ganti Akun</button>
+    `;
+    return;
+  }
+
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  document.getElementById('user-email').textContent = session.user.email || 'Admin';
+
+  loadReports();
+  loadLogs();
+}
+
+document.getElementById('btn-google-login').onclick = () => {
+  sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href } });
+};
+document.getElementById('btn-logout').onclick = async () => {
+  await sb.auth.signOut();
+  location.reload();
+};
+
+// Data Laporan
+async function loadReports() {
+  const { data, error } = await sb.from('reports').select('*').order('id', { ascending: false }).limit(50);
+  if (error) return toast('Gagal memuat laporan: ' + error.message);
+  renderReports(data || []);
+}
+
+function renderReports(items) {
+  document.getElementById('rep-count').textContent = items.filter(i => i.status === 'pending').length;
+  const tbody = document.getElementById('reports-list');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-notice">Belum ada laporan masuk.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map(r => `
+    <tr>
+      <td>#${r.id}</td>
+      <td>${new Date(r.created_at).toLocaleString('id-ID')}</td>
+      <td><b>(${r.x}, ${r.y})</b></td>
+      <td><code>${r.target_uid ? r.target_uid.substring(0, 8) + '…' : 'Tidak diketahui'}</code></td>
+      <td>${r.reason}</td>
+      <td><span class="badge ${r.status}">${r.status}</span></td>
+      <td>
+        <div style="display:flex;gap:4px">
+          ${r.status === 'pending' ? `
+            <button class="btn danger" style="padding:3px 6px;font-size:11px" onclick="actionDeletePx(${r.x}, ${r.y}, ${r.id})">Hapus Px</button>
+            ${r.target_uid ? `<button class="btn danger" style="padding:3px 6px;font-size:11px" onclick="actionBan('${r.target_uid}', ${r.id})">Ban</button>` : ''}
+            <button class="btn secondary" style="padding:3px 6px;font-size:11px" onclick="actionDismiss(${r.id})">Abaikan</button>
+          ` : '<span style="color:var(--mut)">Selesai</span>'}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// Aksi Moderasi
+window.actionDeletePx = async (x, y, repId) => {
+  if (!confirm(`Hapus pixel di titik (${x}, ${y})?`)) return;
+  const { error } = await sb.rpc('delete_pixels', { p: [{ x, y }] });
+  if (error) return toast('Gagal: ' + error.message);
+  if (repId) await sb.rpc('admin_resolve_report', { p_rep_id: repId, p_status: 'resolved' });
+  toast('Pixel berhasil dihapus');
+  loadReports();
+};
+
+window.actionBan = async (uid, repId) => {
+  const reason = prompt('Masukkan alasan pemblokiran:', 'Vandalisme');
+  if (reason === null) return;
+  const { error } = await sb.rpc('admin_toggle_ban', { p_uid: uid, p_ban: true, p_reason: reason });
+  if (error) return toast('Gagal: ' + error.message);
+  if (repId) await sb.rpc('admin_resolve_report', { p_rep_id: repId, p_status: 'resolved' });
+  toast('Pemain berhasil diblokir');
+  loadReports();
+};
+
+window.actionDismiss = async (repId) => {
+  const { error } = await sb.rpc('admin_resolve_report', { p_rep_id: repId, p_status: 'dismissed' });
+  if (error) return toast('Gagal: ' + error.message);
+  toast('Laporan diabaikan');
+  loadReports();
+};
+
+// Hapus Area Persegi Panjang
+document.getElementById('btn-delete-rect').onclick = async () => {
+  const x1 = parseInt(document.getElementById('box-x1').value);
+  const y1 = parseInt(document.getElementById('box-y1').value);
+  const x2 = parseInt(document.getElementById('box-x2').value);
+  const y2 = parseInt(document.getElementById('box-y2').value);
+  if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) return toast('Isi seluruh koordinat dengan angka valid');
+  if (!confirm(`YAKIN menghapus seluruh pixel di area (${x1}, ${y1}) hingga (${x2}, ${y2})? Tindakan ini tidak dapat dibatalkan.`)) return;
+  const { data, error } = await sb.rpc('admin_delete_rect', { x1, y1, x2, y2 });
+  if (error) return toast('Gagal: ' + error.message);
+  toast(`Berhasil menghapus ${data.deleted_pixels} pixel di area tersebut`);
+  loadLogs();
+};
+
+// Tindakan Pemain Manual
+document.getElementById('btn-ban-player').onclick = async () => {
+  const uid = document.getElementById('target-uid').value.trim();
+  if (!uid) return toast('Masukkan UUID pemain');
+  const reason = prompt('Alasan pemblokiran:', 'Pelanggaran aturan');
+  if (reason === null) return;
+  const { error } = await sb.rpc('admin_toggle_ban', { p_uid: uid, p_ban: true, p_reason: reason });
+  if (error) return toast('Gagal: ' + error.message);
+  toast('Pemain berhasil diblokir');
+  loadLogs();
+};
+
+document.getElementById('btn-unban-player').onclick = async () => {
+  const uid = document.getElementById('target-uid').value.trim();
+  if (!uid) return toast('Masukkan UUID pemain');
+  const { error } = await sb.rpc('admin_toggle_ban', { p_uid: uid, p_ban: false, p_reason: 'Unban oleh admin' });
+  if (error) return toast('Gagal: ' + error.message);
+  toast('Blokir pemain berhasil dibuka');
+  loadLogs();
+};
+
+document.getElementById('btn-delete-player-px').onclick = async () => {
+  const uid = document.getElementById('target-uid').value.trim();
+  if (!uid) return toast('Masukkan UUID pemain');
+  if (!confirm(`Yakin hapus SEMUA pixel milik pemain ${uid}?`)) return;
+  const { data, error } = await sb.rpc('admin_delete_player_pixels', { p_uid: uid });
+  if (error) return toast('Gagal: ' + error.message);
+  toast(`Berhasil menghapus ${data.deleted_pixels} pixel milik pemain ini`);
+  loadLogs();
+};
+
+document.getElementById('btn-reset-nick').onclick = async () => {
+  const uid = document.getElementById('target-uid').value.trim();
+  if (!uid) return toast('Masukkan UUID pemain');
+  const { error } = await sb.rpc('admin_reset_nick', { p_uid: uid });
+  if (error) return toast('Gagal: ' + error.message);
+  toast('Nama tampilan berhasil direset');
+  loadLogs();
+};
+
+// Log Moderasi
+async function loadLogs() {
+  const { data, error } = await sb.from('mod_logs').select('*').order('id', { ascending: false }).limit(50);
+  if (error) return;
+  const tbody = document.getElementById('logs-list');
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-notice">Belum ada riwayat aksi.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(l => `
+    <tr>
+      <td>#${l.id}</td>
+      <td>${new Date(l.created_at).toLocaleString('id-ID')}</td>
+      <td><code>${(l.admin_uid || 'Admin').substring(0, 8)}</code></td>
+      <td><b>${l.action}</b></td>
+      <td><code>${l.target_uid ? l.target_uid.substring(0, 8) + '…' : '-'}</code></td>
+      <td><pre style="font-size:10px">${JSON.stringify(l.details || {})}</pre></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('btn-cleanup-logs').onclick = async () => {
+  if (!confirm('Bersihkan seluruh log moderasi yang lebih lama dari 30 hari?')) return;
+  const { data, error } = await sb.rpc('admin_cleanup_logs');
+  if (error) return toast('Gagal: ' + error.message);
+  toast(`Berhasil membersihkan ${data.cleaned_rows} baris log lama`);
+  loadLogs();
+};
+
+function loadDemoData() {
+  renderReports([
+    { id: 101, created_at: new Date().toISOString(), x: 106820, y: -6200, target_uid: 'demo-user-1234', reason: 'Gambar tidak pantas', status: 'pending' },
+    { id: 100, created_at: new Date(Date.now() - 3600000).toISOString(), x: 110200, y: -7100, target_uid: 'demo-user-5678', reason: 'Spam warna acak', status: 'resolved' }
+  ]);
+  loadMetrics();
+}
+
+async function loadMetrics() {
+  if (SB_URL.includes('PROJECT-ID')) {
+    renderMetrics({
+      db_size_mb: 28.5,
+      db_usage_pct: 5.7,
+      db_warning: false,
+      pixels_total: 12480,
+      players_total: 412,
+      players_active_today: 89,
+      reports_pending: 1
+    });
+    return;
+  }
+  const { data, error } = await sb.rpc('get_system_stats');
+  if (error) {
+    console.warn('Gagal memuat metrik sistem:', error.message);
+    return;
+  }
+  renderMetrics(data);
+}
+
+function renderMetrics(m) {
+  if (!m) return;
+  const dbEl = document.getElementById('metric-db-size');
+  if (dbEl) dbEl.textContent = m.db_size_mb + ' MB';
+  const pctEl = document.getElementById('metric-db-pct');
+  if (pctEl) pctEl.textContent = m.db_usage_pct + '%';
+  const bar = document.getElementById('metric-db-bar');
+  if (bar) {
+    bar.style.width = Math.min(100, m.db_usage_pct) + '%';
+    bar.style.background = m.db_usage_pct > 70 ? 'var(--danger)' : (m.db_usage_pct > 50 ? 'var(--warn)' : 'var(--ac)');
+  }
+  const pxEl = document.getElementById('metric-total-pixels');
+  if (pxEl) pxEl.textContent = Number(m.pixels_total).toLocaleString();
+  const plEl = document.getElementById('metric-total-players');
+  if (plEl) plEl.textContent = Number(m.players_total).toLocaleString();
+  const actEl = document.getElementById('metric-active-today');
+  if (actEl) actEl.textContent = Number(m.players_active_today).toLocaleString();
+  const repEl = document.getElementById('metric-pending-reports');
+  if (repEl) repEl.textContent = m.reports_pending;
+
+  const alertBox = document.getElementById('metrics-alert-box');
+  if (alertBox) {
+    alertBox.style.display = m.db_warning ? 'block' : 'none';
+  }
+}
+
+const btnRefMet = document.getElementById('btn-refresh-metrics');
+if (btnRefMet) btnRefMet.onclick = () => { loadMetrics(); toast('Data metrik diperbarui'); };
+
+const btnRefHeat = document.getElementById('btn-refresh-heat');
+if (btnRefHeat) {
+  btnRefHeat.onclick = async () => {
+    if (SB_URL.includes('PROJECT-ID')) {
+      toast('Mode Demo: Peta panas disimulasikan (Level 0: 10 sel, Level 1: 100 sel)');
+      return;
+    }
+    const { data, error } = await sb.rpc('refresh_heat');
+    if (error) return toast('Gagal: ' + error.message);
+    toast(`Peta panas berhasil disegarkan: L0=${data.level_0_cells}, L1=${data.level_1_cells} sel`);
+  };
+}
+
+const btnRefTeam = document.getElementById('btn-refresh-team');
+if (btnRefTeam) {
+  btnRefTeam.onclick = async () => {
+    if (SB_URL.includes('PROJECT-ID')) {
+      toast('Mode Demo: Peringkat tim provinsi disimulasikan');
+      return;
+    }
+    const { error } = await sb.rpc('refresh_team_board');
+    if (error) return toast('Gagal: ' + error.message);
+    toast('Tabel peringkat tim provinsi berhasil disegarkan');
+  };
+}
+
+checkAuth();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "NusaPixel",
+  "short_name": "NusaPixel",
+  "description": "Kanvas Pixel Art Kolaboratif Peta Seluruh Indonesia",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#120e24",
+  "theme_color": "#120e24",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

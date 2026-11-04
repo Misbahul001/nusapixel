@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pixel Dunia</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap');
+
+:root{
+  --bg:#1b1730;
+  --voxel-dark:#181329;
+  --voxel-surface:#251e3b;
+  --voxel-surface-hover:#31284d;
+  --voxel-border:#433566;
+  --voxel-shadow:#0e0a1b;
+  
+  --fg:#f4f0ff;
+  --ac:#69F0AE;          /* Mint Green accent from design.md */
+  --cube-blue:#448AFF;   /* Cube Blue from design.md */
+  --grass-green:#66BB6A; /* Grass Block from design.md */
+  --lava-orange:#FF7043; /* Lava Orange from design.md */
+  --gold-accent:#FFD23F;
+  --mut:#a49bc7;
+}
+
+*{box-sizing:border-box}
+html,body{
+  width:100%;
+  height:100%;
+  height:100dvh;
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:var(--voxel-dark);
+  font-family:'Nunito',system-ui,sans-serif;
+  color:var(--fg);
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+
+/* Full Viewport Map */
+#map{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  background:#aad3df; /* Sea blue fallback */
+}
+.leaflet-control-zoom{display:none !important}
+.leaflet-control-attribution{background:rgba(24,19,41,0.7) !important;color:#c0b7e2 !important;font-size:10px !important;border-radius:4px 0 0 0}
+.leaflet-control-attribution a{color:var(--ac) !important;text-decoration:none}
+
+/* Voxel 3D Island Containers */
+.voxel-island{
+  background:var(--voxel-surface);
+  border:2px solid var(--voxel-border);
+  border-bottom:4px solid var(--voxel-shadow);
+  border-radius:10px;
+  box-shadow:0 4px 0 rgba(0,0,0,0.3), 0 8px 18px rgba(0,0,0,0.4);
+}
+
+/* Voxel 3D Block Buttons */
+.voxel-btn{
+  background:var(--voxel-surface);
+  border:2px solid var(--voxel-border);
+  border-bottom:4px solid var(--voxel-shadow);
+  border-radius:8px;
+  color:var(--fg);
+  font-family:'Nunito',sans-serif;
+  font-weight:900;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 0 rgba(0,0,0,0.3);
+  transition:transform 0.08s ease, background 0.08s ease, border-color 0.08s ease;
+  padding:0;
+}
+.voxel-btn:hover{background:var(--voxel-surface-hover);border-color:var(--ac)}
+.voxel-btn:active{transform:translateY(3px);border-bottom-width:1px;box-shadow:none}
+.voxel-btn.active{
+  background:var(--grass-green);
+  border-color:var(--ac);
+  border-bottom:4px solid #2e7d32;
+  color:#0d2410;
+}
+.voxel-btn.active:active{transform:translateY(3px);border-bottom-width:1px}
+
+/* Top Nav HUD */
+.top-hud{
+  position:absolute;
+  top:max(12px,calc(env(safe-area-inset-top) + 8px));
+  left:14px;
+  right:14px;
+  z-index:100;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  pointer-events:none;
+}
+.top-hud > *{pointer-events:auto}
+
+/* Compact Stock Badge */
+.hud-stock{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:5px 10px;
+  min-width:130px;
+  max-width:none;
+  background:var(--voxel-surface);
+}
+.cube-icon{
+  width:26px;
+  height:26px;
+  background:var(--cube-blue);
+  border:2px solid #64b5f6;
+  border-bottom:3px solid #1565c0;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 2px 0 rgba(0,0,0,0.3);
+}
+.hud-info{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+#stock{font-size:14px;font-weight:900;color:#fff;letter-spacing:0.3px}
+#sub{font-size:10px;font-weight:800;color:var(--mut);white-space:nowrap}
+
+/* Floating Zoom Notice Banner */
+.zoom-banner{
+  position:absolute;
+  top:max(66px,calc(env(safe-area-inset-top) + 62px));
+  left:50%;
+  transform:translateX(-50%);
+  z-index:99;
+  display:none;
+  align-items:center;
+  gap:7px;
+  padding:7px 16px;
+  background:var(--voxel-surface);
+  border:2px solid #5a487d;
+  border-bottom:4px solid var(--voxel-shadow);
+  border-radius:10px;
+  color:#ffe0b2;
+  font-size:11.5px;
+  font-weight:900;
+  box-shadow:0 6px 16px rgba(0,0,0,0.45);
+  cursor:pointer;
+  animation:voxelDrop 0.15s ease;
+  white-space:nowrap;
+  max-width:calc(100vw - 28px);
+}
+.zoom-banner:hover{border-color:var(--ac);color:#fff}
+.zoom-banner:active{transform:translate(-50%,2px);border-bottom-width:1px}
+
+/* Action Buttons Cluster */
+.hud-actions{display:flex;gap:6px;align-items:center}
+.hud-btn{width:36px;height:36px}
+.hud-btn svg{width:18px;height:18px}
+.hud-btn.gold{color:var(--gold-accent);border-color:#b7921a;border-bottom-color:#634b07}
+.hud-btn.orange{color:var(--lava-orange);border-color:#d8552b;border-bottom-color:#73260c}
+.hud-btn.mint{color:var(--ac);border-color:#38a872;border-bottom-color:#144e32}
+.hud-btn.blue{color:var(--cube-blue);border-color:#2a6cd4;border-bottom-color:#133773}
+.hud-btn.purple{color:#c084fc;border-color:#9333ea;border-bottom-color:#581c87}
+
+/* Coordinate Pill Badge */
+.coord-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 11px;
+  background:var(--voxel-surface);
+  border:2px solid var(--voxel-border);
+  border-bottom:3px solid var(--voxel-shadow);
+  border-radius:18px;
+  font-size:11px;
+  font-weight:900;
+  color:#c7d2fe;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,0.4);
+  transition:all 0.1s ease;
+  user-select:none;
+}
+.coord-pill:hover{border-color:var(--ac);color:#fff}
+.coord-pill:active{transform:translateY(2px);border-bottom-width:1px}
+
+/* Search Drawer */
+.search-drawer{
+  position:absolute;
+  top:max(66px,calc(env(safe-area-inset-top) + 62px));
+  left:14px;
+  right:14px;
+  max-width:380px;
+  margin:0 auto;
+  z-index:101;
+  padding:6px 8px;
+  display:none;
+  align-items:center;
+  gap:6px;
+}
+.search-drawer.open{display:flex;animation:voxelDrop .15s ease}
+#q{
+  flex:1;
+  min-width:0;
+  border:2px solid var(--voxel-border);
+  border-radius:6px;
+  padding:7px 10px;
+  font-family:'Nunito',sans-serif;
+  font-size:13px;
+  font-weight:800;
+  background:#171226;
+  color:#fff;
+  outline:none;
+}
+#q:focus{border-color:var(--ac)}
+#q::placeholder{color:var(--mut)}
+
+/* Bottom Docking Toolbar */
+.bottom-dock-container{
+  position:absolute;
+  bottom:max(16px,calc(env(safe-area-inset-bottom) + 8px));
+  left:50%;
+  transform:translateX(-50%);
+  z-index:100;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  pointer-events:none;
+}
+.bottom-dock-container > *{pointer-events:auto}
+
+.dock-toolbar{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 6px;
+}
+.dock-tool{
+  width:54px;
+  height:44px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+}
+.dock-tool svg{width:17px;height:17px}
+.v-label{font-size:9px;font-weight:900;letter-spacing:0.4px}
+
+/* Voxel Swatch Button */
+.voxel-swatch-box{
+  width:22px;
+  height:22px;
+  border-radius:4px;
+  border:2px solid #fff;
+  border-bottom:3px solid rgba(0,0,0,0.5);
+  box-shadow:0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* Palette Popover Window */
+.palette-popover{
+  padding:8px 10px 10px;
+  display:none;
+  width:230px;
+}
+.palette-popover.open{display:block;animation:voxelPop .15s ease}
+.popover-title{
+  font-size:10px;
+  font-weight:900;
+  color:var(--mut);
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  text-align:center;
+  margin-bottom:6px;
+}
+#pal{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.sw{
+  aspect-ratio:1;
+  border-radius:4px;
+  border:2px solid rgba(0,0,0,0.3);
+  border-bottom:3px solid rgba(0,0,0,0.6);
+  padding:0;
+  cursor:pointer;
+  transition:transform 0.08s ease;
+}
+.sw:active{transform:translateY(2px);border-bottom-width:1px}
+.sw.on{
+  border-color:#fff;
+  outline:2px solid var(--ac);
+  transform:scale(1.1);
+  z-index:2;
+}
+
+/* Toast */
+#toast{
+  position:fixed;
+  z-index:500;
+  bottom:max(84px,calc(env(safe-area-inset-bottom) + 80px));
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--voxel-surface);
+  border:2px solid var(--ac);
+  border-bottom:4px solid #1b663b;
+  color:#fff;
+  padding:9px 18px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:900;
+  display:none;
+  max-width:calc(100vw - 32px);
+  width:max-content;
+  text-align:center;
+  box-shadow:0 8px 24px rgba(0,0,0,0.55), 0 3px 0 rgba(0,0,0,0.3);
+  pointer-events:none;
+  animation:voxelPop 0.18s ease;
+  line-height:1.35;
+}
+
+/* Modal Panels */
+#panel{display:none;position:absolute;z-index:300;inset:0;background:rgba(10,8,20,.75);backdrop-filter:blur(4px)}
+#card{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  max-height:85%;
+  overflow:auto;
+  background:var(--voxel-surface);
+  border-top:3px solid var(--voxel-border);
+  border-radius:14px 14px 0 0;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  box-shadow:0 -6px 0 rgba(0,0,0,0.3);
+}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #382e56}
+.row small{color:var(--mut);display:block;margin-top:2px;font-weight:700}
+progress{width:100%;height:8px;accent-color:var(--ac);border-radius:4px}
+button.m{
+  background:var(--grass-green);
+  color:#0e2411;
+  border:2px solid var(--ac);
+  border-bottom:3px solid #2e7d32;
+  border-radius:6px;
+  padding:8px 14px;
+  font-family:'Nunito',sans-serif;
+  font-weight:900;
+  font-size:12px;
+  cursor:pointer;
+  transition:all .08s ease;
+}
+button.m:active{transform:translateY(2px);border-bottom-width:1px}
+button.m:disabled{background:#383050;color:var(--mut);border-color:#4a3f68;border-bottom-color:#201a30;cursor:not-allowed;transform:none}
+.in{flex:1;min-width:0;border:2px solid var(--voxel-border);border-radius:6px;padding:8px 10px;font-size:13px;font-weight:800;background:#171226;color:var(--fg)}
+
+@keyframes voxelDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes voxelPop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="toast"></div>
+
+<!-- Top Nav HUD -->
+<div class="top-hud">
+  <div class="voxel-island hud-stock" id="stock-pill">
+    <div class="cube-icon">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5"><path d="m12 3 8 4.6v9.2L12 21l-8-4.2V7.6L12 3z"/><path d="m12 21V12m0 0L4 7.6m8 4.4 8-4.4"/></svg>
+    </div>
+    <div class="hud-info">
+      <span id="stock">…</span>
+      <span id="sub">Memuat…</span>
+    </div>
+  </div>
+
+  <div class="hud-actions">
+    <button class="voxel-btn hud-btn blue" id="btn-search-toggle" aria-label="Cari" title="Cari Tempat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    </button>
+    <button class="voxel-btn hud-btn mint" id="loc" aria-label="Lokasiku" title="Lokasiku">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><circle cx="12" cy="12" r="6"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+    </button>
+    <button class="voxel-btn hud-btn purple" id="btn-share" aria-label="Bagikan Koordinat" title="Bagikan Koordinat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    </button>
+    <button class="voxel-btn hud-btn gold" id="rank" aria-label="Peringkat" title="Peringkat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2"/><path d="M18 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"/><path d="M4 21h16"/><path d="M12 14v7"/><path d="M18 3H6v8a6 6 0 0 0 12 0V3z"/></svg>
+    </button>
+    <button class="voxel-btn hud-btn orange" id="open" aria-label="Hadiah" title="Hadiah & Misi">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Floating Zoom Notice Banner -->
+<div class="zoom-banner" id="zoom-banner" title="Ketuk untuk perbesar peta">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+  <span>Zoom lebih dekat untuk gambar (<b id="curr-z">5</b>/12)</span>
+</div>
+
+<!-- Floating Search Drawer -->
+<div class="voxel-island search-drawer" id="search-drawer">
+  <input id="q" type="search" placeholder="Cari tempat di Indonesia..." enterkeyhint="search" aria-label="Cari tempat">
+  <button class="voxel-btn blue" id="cari" aria-label="Cari" style="width:34px;height:32px;flex-shrink:0">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+  </button>
+  <button class="voxel-btn" id="btn-search-close" aria-label="Tutup" style="width:34px;height:32px;flex-shrink:0">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+</div>
+
+<!-- Bottom Floating Dock -->
+<div class="bottom-dock-container">
+  <div class="voxel-island coord-pill" id="coord-pill" title="Ketuk untuk salin & bagikan koordinat">
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span id="coord-display">X: 118000, Y: -2500</span>
+  </div>
+
+  <div class="voxel-island palette-popover" id="pal-popover">
+    <div class="popover-title">Palet Pixel (16)</div>
+    <div id="pal"></div>
+  </div>
+
+  <div class="voxel-island dock-toolbar">
+    <button class="voxel-btn dock-tool active" id="btn-draw" title="Mode Gambar (Pena)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+      <span class="v-label">GAMBAR</span>
+    </button>
+    <button class="voxel-btn dock-tool" id="btn-erase" title="Mode Hapus Pixel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+      <span class="v-label">HAPUS</span>
+    </button>
+    <button class="voxel-btn dock-tool active" id="btn-grid" title="Garis Grid">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+      <span class="v-label">GRID</span>
+    </button>
+    <button class="voxel-btn dock-tool" id="btn-palette-toggle" title="Pilih Warna">
+      <div class="voxel-swatch-box" id="active-swatch"></div>
+      <span class="v-label">WARNA</span>
+    </button>
+  </div>
+</div>
+<div id="panel"><div id="card"></div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ====== ISI DUA BARIS INI (Supabase > Project Settings > API) ======
+const SB_URL = 'https://PROJECT-ID.supabase.co';
+const SB_KEY = 'ANON-PUBLIC-KEY';
+// ====================================================================
+const sb = supabase.createClient(SB_URL, SB_KEY);
+const CELL = 0.001;                  // ukuran 1 pixel dalam derajat (±110 m, 10x lebih besar & chunky)
+const MIN_VIEW_Z = 6;                // zoom minimal agar gambar tetap tampil di peta (tidak hilang saat zoom out)
+const MIN_DRAW_Z = 12;               // zoom minimal untuk mulai menggambar
+const PAL = ['#000000','#ffffff','#9e9e9e','#6d4c41','#e53935','#fb8c00','#fdd835','#7cb342',
+             '#2e7d32','#00acc1','#1e88e5','#283593','#8e24aa','#d81b60','#f8bbd0','#a1887f'];
+const MISI = [
+  {id:'m50',  n:50,  t:'Pasang 50 pixel',  r:'+50 pixel instan'},
+  {id:'m200', n:200, t:'Pasang 200 pixel', r:'Boost isi ulang 30 menit'},
+  {id:'m500', n:500, t:'Pasang 500 pixel', r:'+150 pixel instan'}
+];
+let cfg, me, col = 4, isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true;
+let px = new Map(), queue = new Map(), delQueue = new Map();
+const $ = id => document.getElementById(id);
+const key = (x, y) => x + ',' + y;
+
+// ---------- Pixel Art Chiptune SFX Engine (Web Audio API) ----------
+const Sfx = (() => {
+  let ctx = null;
+  const getCtx = () => {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) ctx = new AC();
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  };
+
+  return {
+    click: () => {
+      try {
+        const c = getCtx(); if (!c) return;
+        const now = c.currentTime;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.setValueAtTime(900, now + 0.02);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain); gain.connect(c.destination);
+        osc.start(now); osc.stop(now + 0.05);
+      } catch (e) {}
+    },
+    place: () => {
+      try {
+        const c = getCtx(); if (!c) return;
+        const now = c.currentTime;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(659, now + 0.025);
+        osc.frequency.setValueAtTime(880, now + 0.05);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain); gain.connect(c.destination);
+        osc.start(now); osc.stop(now + 0.09);
+      } catch (e) {}
+    },
+    erase: () => {
+      try {
+        const c = getCtx(); if (!c) return;
+        const now = c.currentTime;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.09);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain); gain.connect(c.destination);
+        osc.start(now); osc.stop(now + 0.09);
+      } catch (e) {}
+    },
+    color: () => {
+      try {
+        const c = getCtx(); if (!c) return;
+        const now = c.currentTime;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523, now);
+        osc.frequency.setValueAtTime(784, now + 0.03);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain); gain.connect(c.destination);
+        osc.start(now); osc.stop(now + 0.08);
+      } catch (e) {}
+    },
+    error: () => {
+      try {
+        const c = getCtx(); if (!c) return;
+        const now = c.currentTime;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.setValueAtTime(130, now + 0.04);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain); gain.connect(c.destination);
+        osc.start(now); osc.stop(now + 0.1);
+      } catch (e) {}
+    }
+  };
+})();
+
+function toast(t){ const e=$('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.display='none',2500); }
+
+// ---------- Peta & Koordinat Deep-Linking (Step 8) ----------
+function parseUrlCoords() {
+  const hash = location.hash.replace(/^#/, '');
+  if (hash) {
+    const parts = hash.split('/');
+    if (parts.length === 3) {
+      const z = parseInt(parts[0]);
+      const lat = parseFloat(parts[1]);
+      const lng = parseFloat(parts[2]);
+      if (!isNaN(z) && !isNaN(lat) && !isNaN(lng)) {
+        const clampZ = Math.max(5, Math.min(19, z));
+        if (L.latLngBounds([[-18, 90], [14, 146]]).contains([lat, lng])) {
+          return { center: [lat, lng], zoom: clampZ };
+        }
+      }
+    }
+  }
+  const params = new URLSearchParams(location.search);
+  const qx = parseInt(params.get('x'));
+  const qy = parseInt(params.get('y'));
+  const qz = parseInt(params.get('z')) || 15;
+  if (!isNaN(qx) && !isNaN(qy)) {
+    const lat = qy * CELL + CELL / 2;
+    const lng = qx * CELL + CELL / 2;
+    const clampZ = Math.max(5, Math.min(19, qz));
+    if (L.latLngBounds([[-18, 90], [14, 146]]).contains([lat, lng])) {
+      return { center: [lat, lng], zoom: clampZ };
+    }
+  }
+  return null;
+}
+
+const initPos = parseUrlCoords() || { center: [-2.5, 118], zoom: 5 };
+const map = L.map('map', {
+  minZoom: 4,
+  maxZoom: 19,
+  zoomControl: false,
+  zoomSnap: 1,
+  zoomDelta: 1,
+  maxBounds: [[-18, 90], [14, 146]],
+  maxBoundsViscosity: 0.3
+}).setView(initPos.center, initPos.zoom);
+
+function updateHashOnMove() {
+  const c = map.getCenter();
+  const z = Math.round(map.getZoom());
+  const hash = `#${z}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`;
+  history.replaceState(null, '', location.pathname + hash);
+}
+map.on('moveend', updateHashOnMove);
+
+function updateCoordDisplay() {
+  const c = map.getCenter();
+  const x = Math.floor(c.lng / CELL);
+  const y = Math.floor(c.lat / CELL);
+  const el = $('coord-display');
+  if (el) el.textContent = `X: ${x}, Y: ${y}`;
+}
+map.on('move', updateCoordDisplay);
+setTimeout(updateCoordDisplay, 100);
+
+map.invalidateSize();
+setTimeout(() => map.invalidateSize(), 100);
+setTimeout(() => map.invalidateSize(), 500);
+window.addEventListener('resize', () => map.invalidateSize());
+window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 200));
+
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+const grid = L.gridLayer({tileSize:256, maxZoom:19});
+grid.createTile = function(c){
+  const t = document.createElement('canvas'); t.width = t.height = 256;
+  if (c.z < MIN_VIEW_Z) return t;
+  const g = t.getContext('2d'), o = L.point(c.x*256, c.y*256);
+  for (const v of px.values()) {
+    const a = map.project([v.y*CELL, v.x*CELL], c.z).subtract(o);
+    const b = map.project([(v.y+1)*CELL, (v.x+1)*CELL], c.z).subtract(o);
+    if (b.x < 0 || a.x > 256 || a.y < 0 || b.y > 256) continue;
+    const w = Math.max(1, Math.ceil(b.x - a.x));
+    const h = Math.max(1, Math.ceil(a.y - b.y));
+    g.fillStyle = PAL[v.c];
+    g.fillRect(Math.floor(a.x), Math.floor(b.y), w, h);
+  }
+  // Garis grid bantuan
+  if (showGrid && c.z >= 12) {
+    const nw = map.unproject(o, c.z);
+    const se = map.unproject(o.add([256, 256]), c.z);
+    const minX = Math.floor(nw.lng / CELL);
+    const maxX = Math.ceil(se.lng / CELL);
+    const minY = Math.floor(se.lat / CELL);
+    const maxY = Math.ceil(nw.lat / CELL);
+
+    g.beginPath();
+    g.lineWidth = 1;
+    g.strokeStyle = c.z >= 15 ? 'rgba(70, 60, 100, 0.35)' : 'rgba(70, 60, 100, 0.2)';
+
+    for (let gx = minX; gx <= maxX; gx++) {
+      const pt = map.project([0, gx * CELL], c.z).subtract(o);
+      const pxPos = Math.round(pt.x) + 0.5;
+      if (pxPos >= 0 && pxPos <= 256) {
+        g.moveTo(pxPos, 0);
+        g.lineTo(pxPos, 256);
+      }
+    }
+    for (let gy = minY; gy <= maxY; gy++) {
+      const pt = map.project([gy * CELL, 0], c.z).subtract(o);
+      const pyPos = Math.round(pt.y) + 0.5;
+      if (pyPos >= 0 && pyPos <= 256) {
+        g.moveTo(0, pyPos);
+        g.lineTo(256, pyPos);
+      }
+    }
+    g.stroke();
+  }
+  return t;
+};
+grid.addTo(map);
+let rt; const redraw = () => { clearTimeout(rt); rt = setTimeout(() => grid.redraw(), 200); };
+
+// ---------- Chunk & Realtime per Wilayah (Step 2) ----------
+const CHUNK_SIZE = 64;
+const chunkCoord = v => Math.floor(v / CHUNK_SIZE);
+const chunkKey = (cx, cy) => cx + '_' + cy;
+
+// Cache chunk yang sudah dimuat ke memori agar tidak download ulang
+const loadedChunks = new Set();
+const loadingChunks = new Set();
+
+// Channel Realtime per chunk (maksimal 64 channel aktif per koneksi)
+const MAX_CHANNELS = 64;
+const activeChunkChannels = new Map(); // key -> SupabaseChannel
+
+function syncRealtimeChannels(visibleChunks, z) {
+  if (SB_URL.includes('PROJECT-ID')) return;
+
+  // Hanya buka channel realtime saat user zoom dekat (z >= MIN_DRAW_Z) dan jumlah chunk <= MAX_CHANNELS
+  const shouldSubscribe = z >= MIN_DRAW_Z && visibleChunks.length <= MAX_CHANNELS;
+  const visibleKeys = new Set(shouldSubscribe ? visibleChunks.map(c => c.k) : []);
+
+  // 1. Berhenti berlangganan (unsubscribe) chunk yang sudah keluar layar
+  for (const [k, ch] of activeChunkChannels.entries()) {
+    if (!visibleKeys.has(k)) {
+      ch.unsubscribe();
+      sb.removeChannel(ch);
+      activeChunkChannels.delete(k);
+    }
+  }
+
+  if (!shouldSubscribe) return;
+
+  // 2. Berlangganan ke chunk baru yang masuk layar
+  for (const c of visibleChunks) {
+    if (activeChunkChannels.size >= MAX_CHANNELS) break;
+    if (!activeChunkChannels.has(c.k)) {
+      const topic = 'chunk:' + c.k;
+      const ch = sb.channel(topic)
+        .on('broadcast', { event: 'pixels' }, payload => {
+          const list = payload.payload?.p || [];
+          let changed = false;
+          list.forEach(item => {
+            const k = key(item.x, item.y);
+            if (item.del) {
+              if (px.has(k)) { px.delete(k); changed = true; }
+            } else {
+              px.set(k, { x: item.x, y: item.y, c: item.c });
+              changed = true;
+            }
+          });
+          if (changed) redraw();
+        })
+        .subscribe();
+      activeChunkChannels.set(c.k, ch);
+    }
+  }
+}
+
+function broadcastChunkPixels(pixelList, isDelete = false) {
+  if (SB_URL.includes('PROJECT-ID')) return;
+  const groups = new Map();
+  pixelList.forEach(p => {
+    const cx = chunkCoord(p.x), cy = chunkCoord(p.y);
+    const ck = chunkKey(cx, cy);
+    if (!groups.has(ck)) groups.set(ck, []);
+    groups.get(ck).push(isDelete ? { x: p.x, y: p.y, del: true } : { x: p.x, y: p.y, c: p.c });
+  });
+
+  for (const [ck, list] of groups.entries()) {
+    const ch = activeChunkChannels.get(ck);
+    if (ch) {
+      ch.send({
+        type: 'broadcast',
+        event: 'pixels',
+        payload: { p: list }
+      });
+    }
+  }
+}
+
+async function load() {
+  const z = map.getZoom();
+  if (z < MIN_VIEW_Z) return;
+
+  const b = map.getBounds();
+  const minX = Math.floor(b.getWest() / CELL);
+  const maxX = Math.ceil(b.getEast() / CELL);
+  const minY = Math.floor(b.getSouth() / CELL);
+  const maxY = Math.ceil(b.getNorth() / CELL);
+
+  const minCx = chunkCoord(minX);
+  const maxCx = chunkCoord(maxX);
+  const minCy = chunkCoord(minY);
+  const maxCy = chunkCoord(maxY);
+
+  const visibleChunks = [];
+  for (let cy = minCy; cy <= maxCy; cy++) {
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      visibleChunks.push({ cx, cy, k: chunkKey(cx, cy) });
+    }
+  }
+
+  // Sinkronkan channel realtime untuk chunk yang tampak di layar
+  syncRealtimeChannels(visibleChunks, z);
+
+  if (SB_URL.includes('PROJECT-ID')) return;
+
+  // Cari chunk yang belum ada di cache memori klien
+  const toFetch = visibleChunks.filter(c => !loadedChunks.has(c.k) && !loadingChunks.has(c.k));
+  if (!toFetch.length) return;
+
+  const batch = toFetch.slice(0, 30);
+  batch.forEach(c => loadingChunks.add(c.k));
+
+  try {
+    const { data, error } = await sb.rpc('get_chunks', {
+      chunks: batch.map(c => ({ cx: c.cx, cy: c.cy }))
+    });
+
+    if (!error && data) {
+      data.forEach(v => px.set(key(v.x, v.y), v));
+      batch.forEach(c => {
+        loadedChunks.add(c.k);
+        loadingChunks.delete(c.k);
+      });
+      redraw();
+    } else {
+      // Fallback kueri rentang jika get_chunks belum di-deploy di Supabase
+      const { data: d2 } = await sb.from('pixels').select('x,y,c')
+        .gte('x', minX).lte('x', maxX)
+        .gte('y', minY).lte('y', maxY)
+        .limit(5000);
+      (d2 || []).forEach(v => px.set(key(v.x, v.y), v));
+      batch.forEach(c => {
+        loadedChunks.add(c.k);
+        loadingChunks.delete(c.k);
+      });
+      redraw();
+    }
+  } catch (err) {
+    batch.forEach(c => loadingChunks.delete(c.k));
+  }
+}
+map.on('moveend', load);
+map.on('zoom', render);
+map.on('zoomend', render);
+
+// ---------- Stok ----------
+const boosted = () => me && new Date(me.boost_until) > Date.now();
+const getMaxStock = () => (me && me.max_stock) || (cfg && cfg.start_stock) || 75;
+function avail(){
+  if (!me) return 0;
+  const maxStock = getMaxStock();
+  let s = me.stock;
+  if (s < maxStock) s = Math.min(maxStock, s + (Date.now() - me.t)/1000 / (boosted() ? cfg.boost_refill_sec : cfg.refill_sec));
+  let pendingNew = 0;
+  queue.forEach(v => { if (v.isNew !== false) pendingNew++; });
+  return Math.floor(s) - pendingNew;
+}
+function render(){
+  if (!me) return;
+  const av = avail();
+  const maxStock = getMaxStock();
+  $('stock').textContent = av + ' / ' + maxStock;
+  const left = boosted() ? Math.ceil((new Date(me.boost_until) - Date.now())/60000) : 0;
+  const z = Math.round(map.getZoom());
+
+  if (z < MIN_DRAW_Z) {
+    $('sub').textContent = 'Zoom Lv. ' + z + ' / ' + MIN_DRAW_Z;
+    $('sub').style.color = '#ffb74d';
+  } else if (left) {
+    $('sub').textContent = 'Boost ' + left + 'm';
+    $('sub').style.color = '#69F0AE';
+  } else {
+    $('sub').textContent = '+1 / ' + cfg.refill_sec + 's';
+    $('sub').style.color = 'var(--mut)';
+  }
+
+  const zb = $('zoom-banner');
+  if (zb) {
+    if (z < MIN_DRAW_Z) {
+      zb.style.display = 'flex';
+      $('curr-z').textContent = z;
+    } else {
+      zb.style.display = 'none';
+    }
+  }
+}
+function setMe(d){ me = {...d, t: Date.now()}; render(); }
+setInterval(render, 1000);
+
+// ---------- Menggambar & Menghapus ----------
+map.on('click', e => {
+  $('pal-popover').classList.remove('open');
+  $('btn-palette-toggle').classList.remove('open');
+  $('search-drawer').classList.remove('open');
+  if (!me) return;
+  if (Math.round(map.getZoom()) < MIN_DRAW_Z) {
+    Sfx.error();
+    return toast('Zoom lebih dekat untuk menggambar (minimal level ' + MIN_DRAW_Z + ')');
+  }
+  const x = Math.floor(e.latlng.lng/CELL), y = Math.floor(e.latlng.lat/CELL);
+  if (x < cfg.min_x || x > cfg.max_x || y < cfg.min_y || y > cfg.max_y) {
+    Sfx.error();
+    return toast('Kanvas hanya mencakup wilayah Indonesia');
+  }
+  const k = key(x, y);
+
+  if (isEraser) {
+    if (!px.has(k)) {
+      Sfx.error();
+      return toast('Tidak ada pixel di titik ini');
+    }
+    px.delete(k);
+    if (queue.has(k)) {
+      queue.delete(k);
+    } else {
+      me.stock = Math.min(getMaxStock(), me.stock + 1);
+    }
+    delQueue.set(k, {x, y});
+    redraw();
+    render();
+    Sfx.erase();
+    toast('Pixel dihapus (+1 stok dikembalikan)');
+    return;
+  }
+
+  const wasInQueue = queue.has(k);
+  const isExisting = px.has(k);
+  if (isExisting) {
+    const existing = px.get(k);
+    if (existing.c === col) {
+      Sfx.error();
+      return toast('Grid ini sudah terisi warna yang sama');
+    }
+  }
+
+  const isNew = !isExisting && !wasInQueue;
+
+  if (isNew && avail() < 1) {
+    Sfx.error();
+    return toast('Stok habis. Tunggu isi ulang atau ambil hadiah.');
+  }
+
+  px.set(k, {x, y, c: col});
+  if (delQueue.has(k)) delQueue.delete(k);
+  queue.set(k, {x, y, c: col, isNew: wasInQueue ? queue.get(k).isNew : isNew});
+  redraw(); render();
+  Sfx.place();
+  if (isExisting) {
+    toast('Warna diganti (stok aman / tidak berkurang)');
+  }
+});
+
+setInterval(async () => {
+  if (delQueue.size) {
+    const dq = [...delQueue.values()].slice(0, 20);
+    dq.forEach(v => delQueue.delete(key(v.x, v.y)));
+    broadcastChunkPixels(dq, true);
+    if (!SB_URL.includes('PROJECT-ID')) {
+      const {data, error} = await sb.rpc('delete_pixels', {p: dq});
+      if (error) console.warn(error.message);
+      else if (data) setMe(data);
+    }
+  }
+  if (!queue.size) return;
+  if (SB_URL.includes('PROJECT-ID')) {
+    let pendingNew = 0;
+    queue.forEach(v => { if (v.isNew !== false) pendingNew++; });
+    me.stock = Math.max(0, me.stock - pendingNew);
+    queue.clear();
+    render();
+    return;
+  }
+  const q = [...queue.values()].slice(0, 20);
+  q.forEach(v => queue.delete(key(v.x, v.y)));
+  broadcastChunkPixels(q, false);
+  const {data, error} = await sb.rpc('place_pixels', {p: q});
+  if (error) {
+    toast(error.message);
+    // Rollback rapi: hanya kembalikan pixel yang gagal, tidak merusak memori lain
+    q.forEach(item => px.delete(key(item.x, item.y)));
+    redraw();
+    const s = await sb.rpc('get_state');
+    if (s.data) setMe(s.data);
+  } else if (data) {
+    setMe(data);
+  }
+}, 1500);
+
+// ---------- Toolbar Mode, Garis Grid & Palet Popover ----------
+function setEraser(active) {
+  isEraser = active;
+  $('btn-erase').classList.toggle('active', isEraser);
+  $('btn-draw').classList.toggle('active', !isEraser);
+  $('btn-erase').classList.toggle('on', isEraser);
+  $('btn-draw').classList.toggle('on', !isEraser);
+  $('map').style.cursor = isEraser ? 'crosshair' : 'default';
+  if (isEraser) {
+    $('pal-popover').classList.remove('open');
+    $('btn-palette-toggle').classList.remove('open');
+    document.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+    toast('Mode Hapus aktif: klik pixel untuk menghapus');
+  } else {
+    document.querySelectorAll('.sw').forEach((s, j) => s.classList.toggle('on', j === col));
+    toast('Mode Gambar aktif');
+  }
+}
+$('btn-draw').onclick = () => { Sfx.click(); setEraser(false); };
+$('btn-erase').onclick = () => { Sfx.click(); setEraser(true); };
+$('btn-grid').onclick = () => {
+  Sfx.click();
+  showGrid = !showGrid;
+  $('btn-grid').classList.toggle('active', showGrid);
+  $('btn-grid').classList.toggle('on', showGrid);
+  redraw();
+  toast(showGrid ? 'Garis grid bantuan diaktifkan' : 'Garis grid bantuan dinonaktifkan');
+};
+
+function updateActiveSwatch() {
+  const s = $('active-swatch');
+  if (s) s.style.background = PAL[col];
+}
+$('btn-palette-toggle').onclick = e => {
+  e.stopPropagation();
+  Sfx.click();
+  const p = $('pal-popover');
+  p.classList.toggle('open');
+  $('btn-palette-toggle').classList.toggle('open', p.classList.contains('open'));
+};
+
+const zb = $('zoom-banner');
+if (zb) zb.onclick = () => {
+  Sfx.click();
+  map.setZoom(Math.min(MIN_DRAW_Z, map.getZoom() + 2));
+};
+
+// ---------- Palet 16 Warna ----------
+PAL.forEach((c, i) => {
+  const b = document.createElement('button'); b.className = 'sw' + (i === col ? ' on' : ''); b.style.background = c;
+  b.setAttribute('aria-label', 'Warna ' + (i + 1));
+  b.onclick = e => {
+    e.stopPropagation();
+    Sfx.color();
+    col = i;
+    setEraser(false);
+    updateActiveSwatch();
+    document.querySelectorAll('.sw').forEach((s, j) => s.classList.toggle('on', j === i));
+    $('pal-popover').classList.remove('open');
+    $('btn-palette-toggle').classList.remove('open');
+  };
+  $('pal').appendChild(b);
+});
+updateActiveSwatch();
+
+// ---------- Hadiah & misi ----------
+const hariIni = () => new Date().toLocaleDateString('sv', {timeZone:'Asia/Jakarta'});
+async function klaim(fn, args){
+  const {data, error} = await sb.rpc(fn, args);
+  if (error) toast(error.message); else { setMe(data); toast('Hadiah diterima'); }
+  panel();
+}
+function panel(){
+  const done = me.last_daily === hariIni(), n = me.day === hariIni() ? me.day_placed : 0;
+  const maxStock = getMaxStock();
+  const trust = me.trust_level || 1;
+  const trustData = {
+    1: { name: 'Pemula', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', border: '#64748b', next: `Syarat Lv. 2: Aktif 2 hari & pasang 50 pixel (Progres: ${me.active_days || 1}/2 hari, ${me.total_placed || 0}/50 px)` },
+    2: { name: 'Penjelajah', color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: '#0284c7', next: `Syarat Lv. 3: Hubungkan Google/Email, aktif 3 hari & pasang 150 px (Progres: ${!isAnon ? 'Akun terhubung' : 'Belum login'}, ${me.active_days || 1}/3 hari, ${me.total_placed || 0}/150 px)` },
+    3: { name: 'Pelukis', color: '#c084fc', bg: 'rgba(192,132,252,0.15)', border: '#9333ea', next: `Syarat Lv. 4: Hubungkan Google/Email, aktif 5 hari / streak 3 & pasang 500 px (Progres: ${me.active_days || 1}/5 hari, ${me.total_placed || 0}/500 px)` },
+    4: { name: 'Master', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706', next: 'Tingkat Tertinggi: Stok maksimal penuh 500 pixel!' }
+  };
+  const tInfo = trustData[trust] || trustData[1];
+
+  $('card').innerHTML = `
+    <div class="row" style="border:0;padding-top:0">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px">
+          <b>Tingkat Kepercayaan</b>
+          <span style="background:${tInfo.bg};color:${tInfo.color};border:1.5px solid ${tInfo.border};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:900">
+            Lv. ${trust} · ${tInfo.name}
+          </span>
+        </div>
+        <small>Stok maksimal akun Anda: <b>${maxStock} px</b></small>
+        <div style="margin-top:6px;font-size:11px;color:#cbd5e1;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);line-height:1.4">
+          ${tInfo.next}
+        </div>
+      </div>
+    </div>
+    <div class="row"><div><b>Hadiah harian</b>
+      <small>+${50 + 10*Math.min((done ? me.streak : me.streak + 1) || 1, 7)} pixel instan · beruntun ${me.streak} hari</small></div>
+      <button class="m" id="kd" ${done ? 'disabled' : ''}>${done ? 'Sudah diambil' : 'Ambil'}</button></div>
+    ${MISI.map(m => { const ok = (me.claimed || []).includes(m.id), siap = n >= m.n;
+      return `<div class="row"><div style="flex:1"><b>${m.t}</b><small>Hadiah: ${m.r}</small>
+        <progress max="${m.n}" value="${Math.min(n, m.n)}"></progress><small>${Math.min(n, m.n)} / ${m.n} hari ini</small></div>
+        <button class="m" data-m="${m.id}" ${ok || !siap ? 'disabled' : ''}>${ok ? 'Diambil' : 'Klaim'}</button></div>`; }).join('')}
+    <div class="row"><div style="flex:1"><b>Akun & Keamanan</b><small>${isAnon ? 'Akun tamu (anonim). Hubungkan Google atau Email agar progres tersimpan & stok bisa naik ke Lv. 3 & 4.' : 'Akun terhubung: ' + esc(currentUserEmail || 'Google / Email')}</small></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        ${isAnon ? '<button class="m" id="gl" title="Tautkan akun Google Anda">Google</button><button class="m" id="em" title="Tautkan email Anda">Email</button><button class="m" id="gi" style="background:#475569;color:#fff;border-color:#64748b" title="Masuk ke akun yang sudah terdaftar">Masuk</button>' : '<button class="m" id="lo">Keluar</button>'}
+      </div></div>
+    <div class="row"><div><b>Tonton iklan</b><small>+${cfg.ad_reward} pixel instan · ${me.ads_today || 0} / ${cfg.ad_daily_cap} hari ini</small></div>
+      <button class="m" id="ad" ${(me.ads_today || 0) >= cfg.ad_daily_cap ? 'disabled' : ''}>Tonton</button></div>
+    <div class="row"><div><b>Lapor Pelanggaran</b><small>Laporkan pixel yang melanggar di titik tengah layar saat ini</small></div>
+      <button class="m" id="lp" style="background:#ef4444;border-color:#fca5a5;color:#fff">Lapor</button></div>
+    <div class="row"><small>Misi dan hadiah harian diperbarui tiap tengah malam WIB.</small>
+      <div style="display:flex;gap:6px"><a href="admin.html" class="m" style="text-decoration:none;display:inline-block;padding:8px 12px;background:#2563eb;border-color:#60a5fa;color:#fff">Admin</a><button class="m" id="tt">Tutup</button></div></div>`;
+  $('panel').style.display = 'block';
+  $('kd').onclick = () => { Sfx.click(); klaim('claim_daily'); };
+  $('ad').onclick = () => { Sfx.click(); tontonIklan(); };
+  $('lp').onclick = async () => {
+    Sfx.click();
+    const c = map.getCenter();
+    const rpx = Math.floor(c.lng / CELL);
+    const rpy = Math.floor(c.lat / CELL);
+    const reason = prompt(`Laporkan pixel di titik tengah (${rpx}, ${rpy})?\n\nMasukkan alasan (misal: konten tidak senonoh / ujaran kebencian):`);
+    if (!reason || !reason.trim()) return;
+    if (SB_URL.includes('PROJECT-ID')) {
+      toast('Laporan diterima (Mode Demo): Tim moderator akan meninjau.');
+      return;
+    }
+    const { data, error } = await sb.rpc('submit_report', { px: rpx, py: rpy, p_reason: reason.trim() });
+    if (error) toast(error.message);
+    else toast(data.message || 'Laporan berhasil dikirim');
+  };
+  const back = location.origin + location.pathname;
+  if ($('gl')) $('gl').onclick = async () => {
+    Sfx.click();
+    if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
+    const r = await sb.auth.linkIdentity({provider: 'google', options: {redirectTo: back}});
+    if (r.error) toast(r.error.message);
+  };
+  if ($('em')) $('em').onclick = async () => {
+    Sfx.click();
+    if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
+    const email = prompt('Masukkan alamat email untuk menghubungkan akun ini:');
+    if (!email || !email.trim()) return;
+    const { data, error } = await sb.auth.updateUser({ email: email.trim() });
+    if (error) toast(error.message);
+    else toast('Tautan konfirmasi dikirim ke email Anda! Buka email untuk verifikasi.');
+  };
+  if ($('gi')) $('gi').onclick = async () => {
+    Sfx.click();
+    if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
+    const method = confirm('Pilih metode masuk:\n\n[OK] Masuk dengan Google\n[Cancel] Masuk dengan Email OTP / Magic Link');
+    if (method) {
+      if (confirm('Masuk ke akun yang sudah ada? Progres akun tamu ini tidak akan dibawa.')) {
+        await sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: back}});
+      }
+    } else {
+      const email = prompt('Masukkan alamat email untuk menerima Magic Link login:');
+      if (!email || !email.trim()) return;
+      const { error } = await sb.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: back } });
+      if (error) toast(error.message);
+      else toast('Magic Link login telah dikirim ke ' + email.trim() + '!');
+    }
+  };
+  if ($('lo')) $('lo').onclick = async () => { Sfx.click(); await sb.auth.signOut(); location.reload(); };
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { Sfx.click(); klaim('claim_mission', {mid: b.dataset.m}); });
+  $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
+}
+$('open').onclick = () => { Sfx.click(); if (me) panel(); };
+
+// ---------- Iklan berhadiah ----------
+async function tontonIklan(){
+  const s = await sb.rpc('start_ad');
+  if (s.error) { toast(s.error.message); return panel(); }
+  $('card').innerHTML = '<div class="row" style="border:0"><div><b>Iklan</b><small id="ads"></small></div></div>';
+  // >>> GANTI blok ini dengan SDK iklan berhadiah dari jaringan iklan Anda.
+  // >>> Sekarang hanya hitung mundur contoh, BUKAN iklan sungguhan.
+  for (let i = cfg.ad_min_sec; i > 0; i--) {
+    $('ads').textContent = 'Contoh iklan, ' + i + ' detik lagi';
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  klaim('claim_ad');
+}
+
+// ---------- Peringkat ----------
+const esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+async function peringkat(kind = 'day'){
+  const {data, error} = await sb.rpc('get_leaderboard', {kind});
+  if (error) return toast(error.message);
+  $('card').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <button class="m" id="t1" ${kind === 'day' ? 'disabled' : ''}>Hari ini</button>
+      <button class="m" id="t2" ${kind === 'all' ? 'disabled' : ''}>Sepanjang waktu</button></div>
+    ${data.top.map((r, i) => `<div class="row" style="${r.me ? 'color:var(--ac);font-weight:700' : ''}">
+      <span>${i + 1}. ${esc(r.nick)}</span><span>${r.n}</span></div>`).join('') || '<div class="row"><small>Belum ada data.</small></div>'}
+    <div class="row"><div>Peringkatmu: <b>#${data.rank}</b> · ${data.n} pixel</div></div>
+    <div class="row"><input class="in" id="nk" maxlength="16" placeholder="Nama tampilan (3-16 karakter)" value="${esc(me.nick || '')}">
+      <button class="m" id="sn">Simpan</button></div>
+    <div class="row"><button class="m" id="tt">Tutup</button></div>`;
+  $('panel').style.display = 'block';
+  $('t1').onclick = () => { Sfx.click(); peringkat('day'); };
+  $('t2').onclick = () => { Sfx.click(); peringkat('all'); };
+  $('sn').onclick = async () => {
+    Sfx.click();
+    const r = await sb.rpc('set_nick', {n: $('nk').value});
+    if (r.error) toast(r.error.message); else { setMe(r.data); toast('Nama disimpan'); }
+    peringkat(kind);
+  };
+  $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
+}
+$('rank').onclick = () => { Sfx.click(); if (me) peringkat('day'); };
+
+// ---------- Cari tempat & lokasiku ----------
+$('btn-search-toggle').onclick = () => {
+  Sfx.click();
+  const d = $('search-drawer');
+  d.classList.toggle('open');
+  const isOpen = d.classList.contains('open');
+  if (isOpen) $('q').focus();
+  if ($('zoom-banner')) $('zoom-banner').style.visibility = isOpen ? 'hidden' : '';
+};
+$('btn-search-close').onclick = () => {
+  Sfx.click();
+  $('search-drawer').classList.remove('open');
+  if ($('zoom-banner')) $('zoom-banner').style.visibility = '';
+};
+
+async function cari(){
+  const q = $('q').value.trim(); if (!q) return;
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=id&q=' + encodeURIComponent(q));
+    const d = await r.json();
+    if (!d.length) return toast('Tempat tidak ditemukan di Indonesia');
+    map.setView([+d[0].lat, +d[0].lon], 17);
+    $('search-drawer').classList.remove('open');
+    if ($('zoom-banner')) $('zoom-banner').style.visibility = '';
+  } catch { toast('Pencarian gagal. Coba lagi sebentar lagi.'); }
+}
+$('cari').onclick = () => { Sfx.click(); cari(); };
+$('q').onkeydown = e => { if (e.key === 'Enter') cari(); };
+$('loc').onclick = () => {
+  Sfx.click();
+  if (!navigator.geolocation) return toast('Perangkat ini tidak mendukung lokasi');
+  navigator.geolocation.getCurrentPosition(p => {
+    const ll = [p.coords.latitude, p.coords.longitude];
+    if (!L.latLngBounds([[-11.5, 94.5], [6.5, 141.5]]).contains(ll)) return toast('Lokasimu di luar wilayah Indonesia');
+    map.setView(ll, 17);
+  }, () => toast('Izin lokasi ditolak. Aktifkan di pengaturan browser.'));
+};
+
+// ---------- Fitur Share Koordinat (Step 8) ----------
+async function shareCoordinates() {
+  Sfx.click();
+  const c = map.getCenter();
+  const z = Math.round(map.getZoom());
+  const x = Math.floor(c.lng / CELL);
+  const y = Math.floor(c.lat / CELL);
+  const hash = `#${z}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`;
+  const shareUrl = location.origin + location.pathname + hash;
+
+  history.replaceState(null, '', location.pathname + hash);
+
+  let shared = false;
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Pixel Dunia',
+        text: `Lihat gambar pixel art di koordinat (${x}, ${y})!`,
+        url: shareUrl
+      });
+      shared = true;
+    } catch (err) {}
+  }
+
+  if (!shared) {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast(`Tautan koordinat disalin: (X: ${x}, Y: ${y})`);
+    } catch {
+      prompt('Salin tautan koordinat ini:', shareUrl);
+    }
+  }
+}
+if ($('btn-share')) $('btn-share').onclick = shareCoordinates;
+if ($('coord-pill')) $('coord-pill').onclick = shareCoordinates;
+
+// ---------- Mulai ----------
+(async () => {
+  if (SB_URL.includes('PROJECT-ID')) {
+    cfg = {
+      max_stock: 500, start_stock: 75, refill_sec: 8, boost_refill_sec: 4,
+      min_x: Math.floor(94.5 / CELL), max_x: Math.floor(141.5 / CELL),
+      min_y: Math.floor(-11.5 / CELL), max_y: Math.floor(6.5 / CELL),
+      ad_reward: 25, ad_daily_cap: 5
+    };
+    setMe({
+      stock: 75, max_stock: 75, trust_level: 1, active_days: 1, total_placed: 0,
+      boost_until: new Date().toISOString(), streak: 1,
+      day_placed: 0, nick: 'Pemain Demo'
+    });
+    toast('Mode Demo: Sambungkan Supabase di index.html untuk multiplayer');
+    return;
+  }
+  const {data:{session}} = await sb.auth.getSession();
+  if (!session) { const r = await sb.auth.signInAnonymously(); if (r.error) return toast('Login anonim belum aktif di Supabase'); }
+  const user = (await sb.auth.getUser()).data.user;
+  isAnon = !!user?.is_anonymous;
+  currentUserEmail = user?.email || (user?.user_metadata && user.user_metadata.email) || '';
+  const ep = new URLSearchParams(location.search);
+  if (ep.get('error_description')) {
+    toast('Gagal menghubungkan akun: ' + ep.get('error_description') + '. Kalau akun sudah terdaftar, silakan tekan Masuk.');
+    history.replaceState(null, '', location.pathname);
+  }
+  cfg = (await sb.from('config').select('*').single()).data;
+  const s = await sb.rpc('get_state'); if (s.error) return toast(s.error.message);
+  setMe(s.data); load();
+})();
+</script>
+</body>
+</html>
