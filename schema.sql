@@ -211,16 +211,14 @@ declare
   cfg config;
   v_batch_len int := jsonb_array_length(p);
   new_count int;
-  elapsed_sec numeric;
-  min_interval_sec numeric;
   current_goal_n bigint;
   v_rec record;
 begin
   select * into cfg from config;
 
   -- Validasi ukuran batch dari config
-  if v_batch_len < 1 or v_batch_len > coalesce(cfg.max_batch_size, 20) then
-    raise exception 'Ukuran batch tidak valid (maksimal %)', coalesce(cfg.max_batch_size, 20);
+  if v_batch_len < 1 or v_batch_len > coalesce(cfg.max_batch_size, 50) then
+    raise exception 'Ukuran batch tidak valid (maksimal %)', coalesce(cfg.max_batch_size, 50);
   end if;
 
   -- Validasi koordinat wilayah Indonesia
@@ -231,15 +229,6 @@ begin
 
   me := refresh_player();
   if me.banned then raise exception 'Akun Anda diblokir karena melanggar aturan komunitas'; end if;
-
-  -- Penegakan batas laju (rate limiting per pemain)
-  if me.last_placed_at is not null and coalesce(cfg.rate_limit_px_per_sec, 5) > 0 then
-    elapsed_sec := extract(epoch from (now() - me.last_placed_at));
-    min_interval_sec := (v_batch_len::numeric / cfg.rate_limit_px_per_sec) * 0.8;
-    if elapsed_sec < min_interval_sec then
-      raise exception 'Terlalu cepat. Kecepatan maksimal adalah % pixel per detik', cfg.rate_limit_px_per_sec;
-    end if;
-  end if;
 
   -- Filter pixel yang terlindungi milik orang lain (Step 17)
   declare
