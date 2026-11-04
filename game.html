@@ -32,7 +32,7 @@ window.addEventListener('unhandledrejection', function(e) {
 if ('caches' in window) {
   caches.keys().then(function(keys) {
     keys.forEach(function(k) {
-      if (k !== 'nusapixel-shell-v27') caches.delete(k);
+      if (k !== 'nusapixel-shell-v28') caches.delete(k);
     });
   });
 }
@@ -1274,6 +1274,28 @@ const redoStack = [];
 const pixelInfoCache = new Map();
 const protectedPixelsMap = new Map(); // key -> expMs (Step 17)
 const INFO_CACHE_TTL = 60 * 1000;
+
+// ---------- State Global Timelapse (Step 16) ----------
+let isTimelapseActive = false;
+let timelapseDays = []; // 14 tanggal (YYYY-MM-DD)
+let timelapseFrames = []; // Array of 14 Maps (chunkKey -> Uint8Array(4096))
+let currentTimelapseIdx = 13; // 0..13 (13 = hari ini)
+let timelapseTimer = null;
+let timelapseSpeed = 1; // 1x, 2x, 4x
+const timelapseCache = new Map(); // "day_cx_cy" -> hex_string
+
+// ---------- State Global Gambar, Sentuh & Peta Panas ----------
+let isDrawing = false;
+let isPinching = false;
+let pinchEndTime = 0;
+let lastCell = null;
+let currentStroke = []; // Array of { x, y, key, prevPx, prevQueue, prevDelQueue, consumedStock }
+let showHeatmap = false;
+
+// ---------- State Cache Chunk ----------
+const loadedChunks = new Set();
+const loadingChunks = new Set();
+
 const $ = id => document.getElementById(id);
 const key = (x, y) => x + ',' + y;
 
@@ -2238,9 +2260,6 @@ const redraw = () => {
   });
 };
 
-// ---------- Peta Panas Aktivitas (Dihapus Sesuai Permintaan) ----------
-let showHeatmap = false;
-
 // ---------- Hamparan Template (Step 11 - Klien Saja) ----------
 const templateGrid = L.gridLayer({ tileSize: 256, maxZoom: 19, zIndex: 12 });
 templateGrid.createTile = function(c) {
@@ -2670,13 +2689,7 @@ function redoPixel() {
 }
 
 // ---------- Time-lapse Area 14 Hari (Step 16) ----------
-let isTimelapseActive = false;
-let timelapseDays = []; // 14 tanggal (YYYY-MM-DD)
-let timelapseFrames = []; // Array of 14 Maps (chunkKey -> Uint8Array(4096))
-let currentTimelapseIdx = 13; // 0..13 (13 = hari ini)
-let timelapseTimer = null;
-let timelapseSpeed = 1; // 1x, 2x, 4x
-const timelapseCache = new Map(); // "day_cx_cy" -> hex_string
+// (State timelapse dideklarasikan di awal skrip)
 
 function generateTimelapseDays() {
   const days = [];
@@ -3001,9 +3014,7 @@ const CHUNK_SIZE = 64;
 const chunkCoord = v => Math.floor(v / CHUNK_SIZE);
 const chunkKey = (cx, cy) => cx + '_' + cy;
 
-// Cache chunk yang sudah dimuat ke memori agar tidak download ulang
-const loadedChunks = new Set();
-const loadingChunks = new Set();
+// (Cache chunk dideklarasikan di awal skrip)
 
 // Cache Klien Berbasis IndexedDB dengan TTL (Step 5: Kompresi & Hemat Egress)
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 menit masa berlaku agar selalu segar
@@ -4067,11 +4078,7 @@ async function showPixelInfo(x, y) {
 }
 
 // ---------- Interaksi Menggambar & Menyeret (Desktop & Touch) ----------
-let isDrawing = false;
-let isPinching = false;
-let pinchEndTime = 0;
-let lastCell = null;
-let currentStroke = []; // Array of { x, y, key, prevPx, prevQueue, prevDelQueue, consumedStock }
+// (State menggambar & sentuh dideklarasikan di awal skrip)
 
 function revertStrokeCell(item) {
   const k = item.key;
