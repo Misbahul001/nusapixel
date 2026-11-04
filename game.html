@@ -3563,6 +3563,7 @@ function setMe(d){
   me = {...d, t: assignedT};
   if (prevAvatar && !me.avatar_url) me.avatar_url = prevAvatar;
   if (prevColor && !me.avatar_color) me.avatar_color = prevColor;
+  try { localStorage.setItem('np_cached_me', JSON.stringify(me)); } catch (e) {}
   if (SB_URL.includes('PROJECT-ID')) {
     try { localStorage.setItem('np_demo_me', JSON.stringify(me)); } catch (e) {}
   }
@@ -3887,8 +3888,9 @@ function handleDrawStart(latlng) {
   $('search-drawer').classList.remove('open');
   if (!me) return;
   if (Math.round(map.getZoom()) < MIN_DRAW_Z) {
-    Sfx.error();
-    return toast('Zoom lebih dekat untuk menggambar (minimal level ' + MIN_DRAW_Z + ')');
+    Sfx.click();
+    map.setView(latlng, MIN_DRAW_Z);
+    return toast('Mendekat otomatis ke level ' + MIN_DRAW_Z + ' untuk mulai menggambar');
   }
   const x = Math.floor(latlng.lng / CELL);
   const y = Math.floor(latlng.lat / CELL);
@@ -5187,7 +5189,7 @@ function wireAuthButtons() {
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
   if ($('tt')) $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
 }
-$('open').onclick = () => { Sfx.click(); if (me) panel('missions'); };
+$('open').onclick = () => { Sfx.click(); panel('missions'); };
 if ($('panel')) {
   $('panel').onclick = (e) => {
     if (e.target && e.target.id === 'panel') {
@@ -5198,13 +5200,13 @@ if ($('panel')) {
 }
 const stockPill = $('stock-pill');
 if (stockPill) {
-  stockPill.onclick = () => { if (me) showPixelZoomGuideModal(); };
+  stockPill.onclick = () => { showPixelZoomGuideModal(); };
 }
 const btnHelpStock = $('btn-help-stock');
 if (btnHelpStock) {
   btnHelpStock.onclick = (e) => {
     e.stopPropagation();
-    if (me) showPixelZoomGuideModal();
+    showPixelZoomGuideModal();
   };
 }
 
@@ -5800,7 +5802,7 @@ async function peringkat(tab = rankTab, kind = rankKind){
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
   if ($('tt')) $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
 }
-$('rank').onclick = () => { Sfx.click(); if (me) peringkat('player', 'day'); };
+$('rank').onclick = () => { Sfx.click(); peringkat('player', 'day'); };
 
 // ---------- Cari tempat & lokasiku ----------
 $('btn-search-toggle').onclick = () => {
@@ -5886,7 +5888,7 @@ const btnAccount = $('btn-account');
 if (btnAccount) {
   btnAccount.onclick = () => {
     Sfx.click();
-    if (me) panel('profile');
+    panel('profile');
   };
 }
 
@@ -6000,7 +6002,48 @@ document.addEventListener('visibilitychange', () => {
 });
 setTimeout(pollEventState, 500);
 
-// ---------- Mulai ----------
+// Helper timeout agar request async tidak memblokir game selamanya
+function withTimeout(promise, ms = 4000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout ' + ms + 'ms')), ms))
+  ]);
+}
+
+// Inisialisasi State Awal Instan (0ms - Zero Latency)
+// Mengambil dari cache lokal agar pemain bisa langsung berinteraksi tanpa menunggu jaringan
+let initialPlayerState = {
+  id: localStorage.getItem('np_user_id') || 'player-local',
+  stock: 75,
+  max_stock: 75,
+  t: Date.now(),
+  trust_level: 1,
+  active_days: 1,
+  total_placed: 0,
+  streak: 1,
+  claimed: [],
+  ads_today: 0,
+  nick: localStorage.getItem('np_user_nick') || 'Pemain',
+  avatar_url: localStorage.getItem('np_user_avatar') || null,
+  avatar_color: localStorage.getItem('np_user_avatar_color') || '#38bdf8'
+};
+try {
+  const cached = localStorage.getItem('np_cached_me');
+  if (cached) {
+    const p = JSON.parse(cached);
+    if (p && typeof p.stock === 'number') {
+      initialPlayerState = { ...initialPlayerState, ...p, t: Date.now() };
+    }
+  }
+} catch (e) {}
+
+// Aktifkan seketika tanpa menunggu koneksi server!
+setMe(initialPlayerState);
+loadSavedTemplate();
+updateUndoRedoUI();
+load();
+
+// ---------- Sinkronisasi Latar Belakang (Supabase Background Sync) ----------
 (async () => {
   try {
     checkUrlInvite();
@@ -6026,21 +6069,21 @@ setTimeout(pollEventState, 500);
       return;
     }
 
+    if (window.location.hash && window.location.hash.includes('access_token=')) {
+      history.replaceState(null, '', location.pathname);
+    }
+
     let session = null;
     try {
-      const sessRes = await sb.auth.getSession();
+      const sessRes = await withTimeout(sb.auth.getSession(), 3500);
       session = sessRes?.data?.session || null;
     } catch (e) {
       console.warn('Gagal membaca sesi:', e);
     }
 
-    if (window.location.hash && window.location.hash.includes('access_token=')) {
-      history.replaceState(null, '', location.pathname);
-    }
-
     if (!session) {
       try {
-        const r = await sb.auth.signInAnonymously();
+        const r = await withTimeout(sb.auth.signInAnonymously(), 3500);
         if (r?.error) console.warn('Login anonim:', r.error.message);
         else session = r?.data?.session || null;
       } catch (e) {
@@ -6051,7 +6094,7 @@ setTimeout(pollEventState, 500);
     let user = session?.user || null;
     if (!user) {
       try {
-        const uRes = await sb.auth.getUser();
+        const uRes = await withTimeout(sb.auth.getUser(), 2500);
         user = uRes?.data?.user || null;
       } catch (e) {}
     }
@@ -6080,18 +6123,18 @@ setTimeout(pollEventState, 500);
     }
 
     try {
-      const cfgRes = await sb.from('config').select('*').single();
+      const cfgRes = await withTimeout(sb.from('config').select('*').single(), 3000);
       if (cfgRes?.data) cfg = { ...cfg, ...cfgRes.data };
     } catch (e) {
       console.warn('Gagal mengambil remote config:', e);
     }
 
     try {
-      await loadMissions();
+      await withTimeout(loadMissions(), 3000);
     } catch (e) {}
 
     try {
-      const { data: isAdm } = await sb.rpc('is_admin');
+      const { data: isAdm } = await withTimeout(sb.rpc('is_admin'), 2500);
       isAdminUser = !!isAdm;
     } catch (e) {
       isAdminUser = false;
@@ -6099,7 +6142,7 @@ setTimeout(pollEventState, 500);
 
     let playerState = null;
     try {
-      const s = await sb.rpc('get_state');
+      const s = await withTimeout(sb.rpc('get_state'), 4000);
       if (s?.data) {
         playerState = s.data;
       } else if (s?.error) {
@@ -6109,33 +6152,12 @@ setTimeout(pollEventState, 500);
       console.warn('get_state exception:', e);
     }
 
-    if (!playerState) {
-      playerState = {
-        id: user?.id || 'player-local',
-        stock: (cfg && cfg.start_stock) || 75,
-        max_stock: (cfg && cfg.start_stock) || 75,
-        t: Date.now(),
-        trust_level: isAnon ? 1 : 2,
-        active_days: 1,
-        total_placed: 0,
-        streak: 1,
-        claimed: [],
-        ads_today: 0
-      };
+    if (playerState) {
+      setMe(playerState);
+      load();
     }
-
-    setMe(playerState);
-    load();
-    loadSavedTemplate();
-    updateUndoRedoUI();
   } catch (err) {
-    console.error('Fatal init error:', err);
-    if (!me) {
-      setMe({ stock: 75, max_stock: 75, t: Date.now() });
-    }
-    load();
-    loadSavedTemplate();
-    updateUndoRedoUI();
+    console.warn('Background sync error (safe):', err);
   }
 })();
 
