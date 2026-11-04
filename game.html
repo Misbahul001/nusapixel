@@ -1033,12 +1033,18 @@ button.m:disabled{opacity:0.65;cursor:not-allowed !important;transform:none !imp
         <span style="font-size:10px;font-weight:800;color:var(--mut)">Opasitas: <span id="template-opacity-val">50%</span></span>
         <input type="range" id="template-opacity-slider" min="20" max="80" value="50" style="flex:1;accent-color:var(--ac);cursor:pointer">
       </div>
-      <div class="template-actions">
+      <div class="template-actions" style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="voxel-btn mint" id="btn-template-next" style="font-size:10px;padding:6px 8px;flex:1" title="Pusatkan peta ke sel yang belum sesuai">
           Sel Berikutnya
         </button>
+        <button class="voxel-btn blue" id="btn-template-rotate" style="font-size:10px;padding:6px 8px" title="Putar template 90° searah jarum jam">
+          Putar 90°
+        </button>
+        <button class="voxel-btn blue" id="btn-template-flip" style="font-size:10px;padding:6px 8px" title="Balik template horizontal (cermin)">
+          Cermin
+        </button>
         <button class="voxel-btn blue" id="btn-template-move" style="font-size:10px;padding:6px 8px" title="Pindahkan template ke tengah layar">
-          Pindah
+          Pusatkan
         </button>
         <button class="voxel-btn red" id="btn-template-delete" style="font-size:10px;padding:6px 8px" title="Hapus template dari layar">
           Hapus
@@ -2023,16 +2029,18 @@ templateGrid.createTile = function(c) {
 
   const startX = Math.max(0, tileMinX - anchorX);
   const endX = Math.min(w, tileMaxX - anchorX + 1);
-  const startY = Math.max(0, tileMinY - anchorY);
-  const endY = Math.min(h, tileMaxY - anchorY + 1);
+  const startY = Math.max(0, (anchorY + h - 1) - tileMaxY);
+  const endY = Math.min(h, (anchorY + h - 1) - tileMinY + 1);
+
+  if (startX >= endX || startY >= endY) return t;
 
   for (let ty = startY; ty < endY; ty++) {
+    const wy = anchorY + (h - 1 - ty);
     for (let tx = startX; tx < endX; tx++) {
       const tc = tgrid[ty * w + tx];
       if (tc < 0) continue;
 
       const wx = anchorX + tx;
-      const wy = anchorY + ty;
 
       const a = map.project([wy * CELL, wx * CELL], c.z).subtract(o);
       const b = map.project([(wy + 1) * CELL, (wx + 1) * CELL], c.z).subtract(o);
@@ -2179,12 +2187,12 @@ function findNextTemplateCell() {
   let minDistance = Infinity;
 
   for (let ty = 0; ty < h; ty++) {
+    const wy = anchorY + (h - 1 - ty);
     for (let tx = 0; tx < w; tx++) {
       const tc = tgrid[ty * w + tx];
       if (tc < 0) continue;
 
       const wx = anchorX + tx;
-      const wy = anchorY + ty;
       const existing = px.get(key(wx, wy));
 
       if (!existing || existing.c !== tc) {
@@ -2215,6 +2223,49 @@ function findNextTemplateCell() {
 
   Sfx.click();
   toast(`Sel berikutnya (${bestCell.x}, ${bestCell.y}): ${PAL_NAMES[bestCell.color]}`);
+}
+
+function rotateTemplate() {
+  if (!activeTemplate) return;
+  const { w, h, grid: oldGrid } = activeTemplate;
+  const newW = h;
+  const newH = w;
+  const newGrid = new Int8Array(newW * newH);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const oldVal = oldGrid[y * w + x];
+      // Rotasi 90 derajat searah jarum jam: (x, y) -> (h - 1 - y, x)
+      const newX = h - 1 - y;
+      const newY = x;
+      newGrid[newY * newW + newX] = oldVal;
+    }
+  }
+
+  activeTemplate.w = newW;
+  activeTemplate.h = newH;
+  activeTemplate.grid = newGrid;
+  $('template-title').textContent = `Template: ${newW}×${newH} sel`;
+  templateGrid.redraw();
+  Sfx.click();
+  toast('Template diputar 90° searah jarum jam');
+}
+
+function flipTemplateHorizontal() {
+  if (!activeTemplate) return;
+  const { w, h, grid: oldGrid } = activeTemplate;
+  const newGrid = new Int8Array(w * h);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      newGrid[y * w + (w - 1 - x)] = oldGrid[y * w + x];
+    }
+  }
+
+  activeTemplate.grid = newGrid;
+  templateGrid.redraw();
+  Sfx.click();
+  toast('Template dicerminkan horizontal');
 }
 
 function moveTemplateToCenter() {
@@ -5667,6 +5718,12 @@ if (btnCloseTemplate) btnCloseTemplate.onclick = () => { Sfx.click(); $('templat
 
 const btnTemplateNext = $('btn-template-next');
 if (btnTemplateNext) btnTemplateNext.onclick = findNextTemplateCell;
+
+const btnTemplateRotate = $('btn-template-rotate');
+if (btnTemplateRotate) btnTemplateRotate.onclick = rotateTemplate;
+
+const btnTemplateFlip = $('btn-template-flip');
+if (btnTemplateFlip) btnTemplateFlip.onclick = flipTemplateHorizontal;
 
 const btnTemplateMove = $('btn-template-move');
 if (btnTemplateMove) btnTemplateMove.onclick = moveTemplateToCenter;
