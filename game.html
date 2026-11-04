@@ -2,6 +2,41 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<script>
+// On-screen error logger for instant mobile debugging
+window.addEventListener('error', function(e) {
+  try {
+    var d = document.getElementById('debug-err-banner');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'debug-err-banner';
+      d.style = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:8px 12px;z-index:9999999;font-size:11px;font-family:monospace;word-break:break-all;line-height:1.4;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:flex;justify-content:space-between;align-items:center;';
+      (document.body || document.documentElement).appendChild(d);
+    }
+    d.innerHTML = '<span><b>JS ERROR:</b> ' + (e.message || e) + ' (' + (e.filename ? e.filename.split('/').pop() : '') + ':' + (e.lineno || '') + ')</span><button onclick="this.parentElement.remove()" style="background:#fff;color:#dc2626;border:0;padding:2px 8px;border-radius:4px;font-weight:bold;margin-left:8px;cursor:pointer">✕</button>';
+  } catch (err) {}
+});
+window.addEventListener('unhandledrejection', function(e) {
+  try {
+    var d = document.getElementById('debug-reject-banner');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'debug-reject-banner';
+      d.style = 'position:fixed;top:40px;left:0;right:0;background:#b91c1c;color:#fff;padding:8px 12px;z-index:9999999;font-size:11px;font-family:monospace;word-break:break-all;line-height:1.4;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:flex;justify-content:space-between;align-items:center;';
+      (document.body || document.documentElement).appendChild(d);
+    }
+    d.innerHTML = '<span><b>PROMISE ERROR:</b> ' + ((e.reason && e.reason.message) || e.reason || e) + '</span><button onclick="this.parentElement.remove()" style="background:#fff;color:#b91c1c;border:0;padding:2px 8px;border-radius:4px;font-weight:bold;margin-left:8px;cursor:pointer">✕</button>';
+  } catch (err) {}
+});
+// Purge stale service worker caches
+if ('caches' in window) {
+  caches.keys().then(function(keys) {
+    keys.forEach(function(k) {
+      if (k !== 'nusapixel-shell-v27') caches.delete(k);
+    });
+  });
+}
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>NusaPixel</title>
 <link rel="manifest" href="manifest.json">
@@ -1209,7 +1244,7 @@ let cfg = {
   max_stock: 500,
   max_batch_size: 20
 };
-let isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true, isAdminUser = false;
+let isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true, isAdminUser = false, currentEventState = null, activeMissions = [];
 let me = {
   id: 'player-local',
   stock: 75,
@@ -1234,6 +1269,8 @@ try {
 } catch (e) {}
 let activeTemplate = null; // Step 11: { w, h, anchorX, anchorY, opacity, grid }
 let px = new Map(), queue = new Map(), delQueue = new Map();
+const undoStack = []; // Maksimal 30 riwayat goresan
+const redoStack = [];
 const pixelInfoCache = new Map();
 const protectedPixelsMap = new Map(); // key -> expMs (Step 17)
 const INFO_CACHE_TTL = 60 * 1000;
@@ -1864,6 +1901,165 @@ function parseUrlCoords() {
   return null;
 }
 
+
+// ==============================================================================
+// Robust UI Initialization (Guaranteed Immediate Interaction)
+// ==============================================================================
+function updateActiveSwatch() {
+  const s = $('active-swatch');
+  if (s) s.style.background = PAL[col] || '#000000';
+}
+
+function initUI() {
+  try {
+    // 1. Buat Swatch Palet 16 Warna (jika belum dibuat)
+    const palEl = $('pal');
+    if (palEl && palEl.children.length === 0) {
+      PAL.forEach((c, i) => {
+        const b = document.createElement('button');
+        b.className = 'sw' + (i === col ? ' on' : '');
+        b.style.background = c;
+        b.setAttribute('aria-label', PAL_NAMES[i] || ('Warna ' + (i + 1)));
+        b.setAttribute('title', PAL_NAMES[i] || ('Warna ' + (i + 1)));
+        b.onclick = e => {
+          e.stopPropagation();
+          Sfx.color();
+          col = i;
+          try { localStorage.setItem('pixeldunia_col', col); } catch (err) {}
+          setMode('draw');
+          updateActiveSwatch();
+          document.querySelectorAll('.sw').forEach((s, j) => s.classList.toggle('on', j === i));
+          const p = $('pal-popover');
+          if (p) p.classList.remove('open');
+          const bt = $('btn-palette-toggle');
+          if (bt) bt.classList.remove('open');
+        };
+        palEl.appendChild(b);
+      });
+    }
+    updateActiveSwatch();
+
+    // 2. Toolbar Bawah (Draw, Pan, Info, Pipet, Erase, Undo, Redo, Grid, Palet)
+    if ($('btn-draw')) $('btn-draw').onclick = () => { Sfx.click(); setMode('draw'); };
+    if ($('btn-pan')) $('btn-pan').onclick = () => { Sfx.click(); setMode('pan'); };
+    if ($('btn-info')) $('btn-info').onclick = () => { Sfx.click(); setMode('info'); };
+    if ($('btn-pipette')) $('btn-pipette').onclick = () => { Sfx.click(); setMode('pipette'); };
+    if ($('btn-erase')) $('btn-erase').onclick = () => { Sfx.click(); setMode('erase'); };
+    if ($('btn-undo')) $('btn-undo').onclick = () => undoPixel();
+    if ($('btn-redo')) $('btn-redo').onclick = () => redoPixel();
+
+    if ($('btn-grid')) {
+      $('btn-grid').onclick = () => {
+        Sfx.click();
+        showGrid = !showGrid;
+        $('btn-grid').classList.toggle('active', showGrid);
+        $('btn-grid').classList.toggle('on', showGrid);
+        if (typeof linesGrid !== 'undefined' && linesGrid.redraw) linesGrid.redraw();
+        toast(showGrid ? 'Garis grid bantuan diaktifkan' : 'Garis grid bantuan dinonaktifkan');
+      };
+    }
+
+    if ($('btn-palette-toggle')) {
+      $('btn-palette-toggle').onclick = e => {
+        e.stopPropagation();
+        Sfx.click();
+        const p = $('pal-popover');
+        if (p) {
+          p.classList.toggle('open');
+          $('btn-palette-toggle').classList.toggle('open', p.classList.contains('open'));
+        }
+      };
+    }
+
+    // 3. Top HUD Navigation (Akun/Profil, Misi & Hadiah, Peringkat, Cari, Lokasiku, Panduan)
+    if ($('btn-account')) {
+      $('btn-account').onclick = () => {
+        Sfx.click();
+        panel('profile');
+      };
+    }
+    if ($('open')) {
+      $('open').onclick = () => {
+        Sfx.click();
+        panel('missions');
+      };
+    }
+    if ($('rank')) {
+      $('rank').onclick = () => {
+        Sfx.click();
+        peringkat('player', 'day');
+      };
+    }
+    if ($('btn-search-toggle')) {
+      $('btn-search-toggle').onclick = () => {
+        Sfx.click();
+        const sd = $('search-drawer');
+        if (sd) {
+          sd.classList.toggle('open');
+          if (sd.classList.contains('open')) {
+            const inp = $('in-search');
+            if (inp) inp.focus();
+          }
+        }
+      };
+    }
+    if ($('loc')) {
+      $('loc').onclick = () => {
+        Sfx.click();
+        if (!navigator.geolocation) return toast('Perangkat ini tidak mendukung lokasi');
+        navigator.geolocation.getCurrentPosition(p => {
+          const ll = [p.coords.latitude, p.coords.longitude];
+          if (!L.latLngBounds([[-18, 90], [14, 146]]).contains(ll)) return toast('Lokasimu di luar wilayah jangkauan');
+          if (typeof map !== 'undefined' && map) map.setView(ll, 17);
+        }, () => toast('Izin lokasi ditolak. Aktifkan di pengaturan browser.'));
+      };
+    }
+    if ($('stock-pill')) $('stock-pill').onclick = () => showPixelZoomGuideModal();
+    if ($('btn-help-stock')) {
+      $('btn-help-stock').onclick = e => {
+        e.stopPropagation();
+        showPixelZoomGuideModal();
+      };
+    }
+    if ($('coord-pill')) $('coord-pill').onclick = shareCoordinates;
+    if ($('btn-share')) $('btn-share').onclick = shareCoordinates;
+
+    // Zoom Banner
+    if ($('zoom-banner')) {
+      $('zoom-banner').onclick = (e) => {
+        if (e.target && e.target.id === 'btn-help-zoom') return;
+        Sfx.click();
+        if (typeof map !== 'undefined' && map) map.setZoom(Math.min(MIN_DRAW_Z, map.getZoom() + 2));
+      };
+    }
+    if ($('btn-help-zoom')) {
+      $('btn-help-zoom').onclick = (e) => {
+        e.stopPropagation();
+        showPixelZoomGuideModal();
+      };
+    }
+
+    // Avatar upload
+    if ($('avatar-file-input')) {
+      $('avatar-file-input').onchange = e => {
+        if (e.target.files && e.target.files[0]) {
+          handleAvatarUpload(e.target.files[0]);
+          e.target.value = '';
+        }
+      };
+    }
+
+    // Segarkan tampilan antarmuka seketika
+    render();
+    if (typeof updateUndoRedoUI === 'function') updateUndoRedoUI();
+    if (typeof updateAccountButtonTheme === 'function') updateAccountButtonTheme();
+    if (typeof updateDraggingState === 'function') updateDraggingState();
+  } catch (err) {
+    console.error('Error during initUI:', err);
+  }
+}
+
+
 const initPos = parseUrlCoords() || { center: [-7.82, 110.37], zoom: 14 };
 const map = L.map('map', {
   minZoom: 4,
@@ -1874,6 +2070,12 @@ const map = L.map('map', {
   maxBounds: [[-18, 90], [14, 146]],
   maxBoundsViscosity: 0.3
 }).setView(initPos.center, initPos.zoom);
+
+// Inisialisasi antarmuka dan palet seketika tanpa menunggu!
+initUI();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUI);
+}
 
 function updateHashOnMove() {
   const c = map.getCenter();
@@ -1896,6 +2098,7 @@ function updateCoordDisplay() {
 map.on('move', updateCoordDisplay);
 setTimeout(() => {
   updateCoordDisplay();
+initUI();
   if (typeof render === 'function') render();
 }, 50);
 
@@ -2120,7 +2323,7 @@ templateGrid.createTile = function(c) {
 };
 templateGrid.addTo(map);
 setTimeout(() => {
-  if (templateGrid.getContainer()) templateGrid.getContainer().style.pointerEvents = 'none';
+  if (typeof templateGrid.getContainer === 'function' && templateGrid.getContainer()) templateGrid.getContainer().style.pointerEvents = 'none';
 }, 100);
 map.on('zoomend', () => { if (activeTemplate) templateGrid.redraw(); });
 
@@ -2376,8 +2579,6 @@ function loadSavedTemplate() {
 }
 
 // ---------- Sistem Undo & Redo (Riwayat Goresan Pixel) ----------
-const undoStack = []; // Maksimal 30 riwayat goresan
-const redoStack = [];
 
 function updateUndoRedoUI() {
   const btnUndo = $('btn-undo');
@@ -3105,10 +3306,9 @@ map.on('moveend', load);
 map.on('zoom', render);
 map.on('zoomend', render);
 
-// ---------- Stok & Boost (Termasuk Event & Target Bersama Step 12) ----------
-let currentEventState = null;
+// currentEventState dideklarasikan di awal skrip
 
-const getActiveBoostUntil = () => {
+function getActiveBoostUntil() {
   if (!me) return null;
   const pB = me.boost_until ? new Date(me.boost_until).getTime() : 0;
   const gB = (currentEventState && currentEventState.global_boost_until) ? new Date(currentEventState.global_boost_until).getTime() : 0;
@@ -3116,8 +3316,8 @@ const getActiveBoostUntil = () => {
   return maxB > Date.now() ? maxB : 0;
 };
 
-const boosted = () => getActiveBoostUntil() > 0;
-const getMaxStock = () => (me && me.max_stock) || (cfg && cfg.start_stock) || 75;
+function boosted() { return (getActiveBoostUntil() || 0) > 0; }
+function getMaxStock() { return (me && me.max_stock) || (cfg && cfg.start_stock) || 75; }
 
 function syncRefillStock() {
   if (!me) return;
@@ -3271,8 +3471,7 @@ function hariIni() {
   return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' });
 }
 
-// ---------- Koleksi Lencana Profil & Pencapaian ----------
-const BADGES_DEF = [
+var BADGES_DEF = window.BADGES_DEF = [
   {
     id: 'pixel_100',
     name: 'Pembuat Jejak',
@@ -3438,10 +3637,13 @@ function hasClaimableRewards() {
 }
 
 function hasUnclaimedProfileBadges() {
-  if (!me || typeof BADGES_DEF === 'undefined') return false;
-  for (let i = 0; i < BADGES_DEF.length; i++) {
-    const bid = BADGES_DEF[i].id;
-    if (isBadgeEarned(bid) && !isBadgeClaimed(bid)) return true;
+  const bList = window.BADGES_DEF || BADGES_DEF;
+  if (!me || !Array.isArray(bList) || bList.length === 0) return false;
+  for (let i = 0; i < bList.length; i++) {
+    const bid = bList[i].id;
+    if (typeof isBadgeEarned === 'function' && typeof isBadgeClaimed === 'function') {
+      if (isBadgeEarned(bid) && !isBadgeClaimed(bid)) return true;
+    }
   }
   return false;
 }
@@ -4329,8 +4531,11 @@ function setMode(mode) {
   activeMode = mode;
   isEraser = (mode === 'erase');
 
-  $('btn-draw').classList.toggle('active', mode === 'draw');
-  $('btn-draw').classList.toggle('on', mode === 'draw');
+  const bd = $('btn-draw');
+  if (bd) {
+    bd.classList.toggle('active', mode === 'draw');
+    bd.classList.toggle('on', mode === 'draw');
+  }
 
   if ($('btn-pan')) {
     $('btn-pan').classList.toggle('active', mode === 'pan');
@@ -4344,26 +4549,32 @@ function setMode(mode) {
     $('btn-pipette').classList.toggle('active', mode === 'pipette');
     $('btn-pipette').classList.toggle('on', mode === 'pipette');
   }
-  $('btn-erase').classList.toggle('active', mode === 'erase');
-  $('btn-erase').classList.toggle('on', mode === 'erase');
+  const be = $('btn-erase');
+  if (be) {
+    be.classList.toggle('active', mode === 'erase');
+    be.classList.toggle('on', mode === 'erase');
+  }
 
   updateDraggingState();
 
-  if (mode === 'draw') {
-    $('map').style.cursor = 'crosshair';
-    toast('Mode Gambar: gores langsung terisi, tarik mundur untuk hapus kelebihan');
-  } else if (mode === 'pan') {
-    $('map').style.cursor = 'grab';
-    toast('Mode Geser: geser peta bebas, klik untuk pasang 1 px');
-  } else if (mode === 'info') {
-    $('map').style.cursor = 'help';
-    toast('Mode Info: ketuk pixel di peta untuk melihat pembuatnya');
-  } else if (mode === 'pipette') {
-    $('map').style.cursor = 'copy';
-    toast('Mode Pipet: ketuk pixel di peta untuk menyalin warnanya');
-  } else if (mode === 'erase') {
-    $('map').style.cursor = 'pointer';
-    toast('Mode Hapus: seret/swap untuk menghapus banyak pixel');
+  const mapEl = $('map');
+  if (mapEl) {
+    if (mode === 'draw') {
+      mapEl.style.cursor = 'crosshair';
+      toast('Mode Gambar: gores langsung terisi, tarik mundur untuk hapus kelebihan');
+    } else if (mode === 'pan') {
+      mapEl.style.cursor = 'grab';
+      toast('Mode Geser: geser peta bebas, klik untuk pasang 1 px');
+    } else if (mode === 'info') {
+      mapEl.style.cursor = 'help';
+      toast('Mode Info: ketuk pixel di peta untuk melihat pembuatnya');
+    } else if (mode === 'pipette') {
+      mapEl.style.cursor = 'copy';
+      toast('Mode Pipet: ketuk pixel di peta untuk menyalin warnanya');
+    } else if (mode === 'erase') {
+      mapEl.style.cursor = 'pointer';
+      toast('Mode Hapus: seret/swap untuk menghapus banyak pixel');
+    }
   }
 
   if (mode === 'erase' || mode === 'info') {
@@ -4495,7 +4706,7 @@ if (dockCueLeft && dockToolbarEl) {
 
 // ---------- Step 13: Misi Jelajah, Wilayah Provinsi & Lencana ----------
 let panelTab = 'missions'; // 'missions' or 'profile'
-let activeMissions = [
+activeMissions = [
   { id: 'm50', kind: 'day_placed', need: 50, reward_stock: 50, reward_boost_min: 0, title: 'Pasang 50 pixel' },
   { id: 'm200', kind: 'day_placed', need: 200, reward_stock: 0, reward_boost_min: 30, title: 'Pasang 200 pixel' },
   { id: 'm500', kind: 'day_placed', need: 500, reward_stock: 150, reward_boost_min: 0, title: 'Pasang 500 pixel' },
