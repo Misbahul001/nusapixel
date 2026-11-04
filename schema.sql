@@ -8,23 +8,26 @@ create table config(
   start_stock int default 75,            -- stok pemain baru
   refill_sec numeric default 8,          -- detik per 1 pixel (normal)
   boost_refill_sec numeric default 4,    -- detik per 1 pixel (saat boost)
-  -- Batas kanvas = kotak yang melingkupi Indonesia (lat -11.1..6.3, lng 94.9..141.1),
-  -- dalam satuan sel (derajat / CELL = 0.001)
   min_x int default 94900, max_x int default 141100,
   min_y int default -11100, max_y int default 6300,
-  -- Iklan berhadiah
   ad_reward int default 25,              -- pixel instan per iklan
   ad_daily_cap int default 5,            -- maks. iklan per pemain per hari
   ad_cooldown_sec int default 180,       -- jeda antar iklan
   ad_min_sec int default 15,             -- waktu minimal sejak iklan dimulai
-  -- Batas laju & batch (Step 1)
   max_batch_size int default 20,         -- maks. pixel per permintaan
   rate_limit_px_per_sec numeric default 5, -- maks. pixel per detik per pemain
-  -- Moderasi (Step 3)
   daily_report_cap int default 5,        -- maks. laporan per pemain per hari
   nick_change_cooldown_hours int default 24, -- jeda pergantian nama
-  -- Info Pixel (Step 9)
-  info_cooldown_ms int default 500       -- jeda inspeksi info pixel (ms)
+  info_cooldown_ms int default 500,      -- jeda inspeksi info pixel (ms)
+  event_max_mult numeric default 4,      -- batas maksimal pengali event (Step 12)
+  global_boost_until timestamptz,        -- boost global komunitas (Step 12)
+  protect_cost int default 5,            -- biaya lindungi pixel (Step 17)
+  protect_duration_hours int default 24, -- durasi lindungi pixel (Step 17)
+  max_protected_per_player int default 25, -- maks pixel terlindungi per pemain (Step 17)
+  team_change_cooldown_days int default 7, -- jeda ganti tim provinsi (Step 18)
+  invite_reward int default 100,         -- hadiah undangan (Step 19)
+  invite_max_claimed int default 10,     -- batas klaim undangan (Step 19)
+  invite_min_placed int default 100      -- syarat pixel teman (Step 19)
 );
 insert into config default values;
 
@@ -32,6 +35,7 @@ create table pixels(
   x int, y int,
   c smallint not null check (c between 0 and 15),
   uid uuid, updated_at timestamptz default now(),
+  protected_until timestamptz,
   cx int generated always as (floor(x::numeric / 64)::int) stored,
   cy int generated always as (floor(y::numeric / 64)::int) stored,
   primary key (x, y)
@@ -408,12 +412,47 @@ begin
   return get_state();
 end $$;
 
+
+-- ===== TABEL MISI (Single Source of Truth) =====
+create table if not exists missions (
+  id text primary key,
+  kind text not null default 'day_placed',
+  need int not null,
+  reward_stock int not null default 0,
+  reward_boost_min int not null default 0,
+  title text not null
+);
+
+alter table missions enable row level security;
+drop policy if exists "missions_read_all" on missions;
+create policy "missions_read_all" on missions for select to public using (true);
+
+insert into missions (id, kind, need, reward_stock, reward_boost_min, title) values
+  ('m50', 'day_placed', 50, 50, 0, 'Pasang 50 pixel'),
+  ('m200', 'day_placed', 200, 0, 30, 'Pasang 200 pixel'),
+  ('m500', 'day_placed', 500, 150, 0, 'Pasang 500 pixel'),
+  ('m_explore_3', 'explore_regions', 3, 30, 15, 'Jelajah 3 provinsi')
+on conflict (id) do update set
+  kind = excluded.kind,
+  need = excluded.need,
+  reward_stock = excluded.reward_stock,
+  reward_boost_min = excluded.reward_boost_min,
+  title = excluded.title;
+
+create or replace function get_missions() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(to_jsonb(m)), '[]'::jsonb)
+  from (select * from missions order by need asc) m;
+$$;
+revoke execute on function get_missions() from public;
+grant execute on function get_missions() to anon, authenticated;
+
 -- Misi harian & jelajah (berdasarkan tabel missions)
 create function claim_mission(mid text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   me players;
-  m missions;
+  m record;
   progress int;
   s_reward int;
   b_reward interval;
