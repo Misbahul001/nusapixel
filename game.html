@@ -5688,10 +5688,17 @@ setTimeout(pollEventState, 500);
     return;
   }
   const {data:{session}} = await sb.auth.getSession();
+  if (window.location.hash && window.location.hash.includes('access_token=')) {
+    history.replaceState(null, '', location.pathname);
+  }
   if (!session) { const r = await sb.auth.signInAnonymously(); if (r.error) return toast('Login anonim belum aktif di Supabase'); }
   const user = (await sb.auth.getUser()).data.user;
   isAnon = !!user?.is_anonymous;
   currentUserEmail = user?.email || (user?.user_metadata && user.user_metadata.email) || '';
+  if (!isAnon && currentUserEmail) {
+    const userName = user?.user_metadata?.full_name || currentUserEmail;
+    toast('Berhasil masuk sebagai ' + userName);
+  }
   const ep = new URLSearchParams(location.search);
   if (ep.get('error_description')) {
     toast('Gagal menghubungkan akun: ' + ep.get('error_description') + '. Kalau akun sudah terdaftar, silakan tekan Masuk.');

@@ -2,6 +2,12 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<script>
+// Teruskan otomatis token autentikasi OAuth ke halaman permainan kanvas (/game)
+if (window.location.hash && (window.location.hash.includes('access_token=') || window.location.hash.includes('error='))) {
+  window.location.replace('/game' + window.location.hash);
+}
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>NusaPixel — Kanvas Voxel Kolaboratif Nusantara</title>
 <!-- PWA Integration -->
