@@ -1148,7 +1148,7 @@ const SB_KEY = 'sb_publishable_MaXyb37-4s4iIi0N2AgB4w_bDmPGsq7';
 // ====================================================================
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const CELL = 0.001;                  // ukuran 1 pixel dalam derajat (±110 m, 10x lebih besar & chunky)
-const MIN_VIEW_Z = 4;                // zoom minimal agar gambar tetap tampil di peta (tidak hilang saat zoom out)
+const MIN_VIEW_Z = 10;               // zoom minimal agar browser tidak kelebihan beban chunk (anti-freeze)
 const MIN_DRAW_Z = 12;               // zoom minimal untuk mulai menggambar
 const PAL = ['#000000','#ffffff','#9e9e9e','#6d4c41','#e53935','#fb8c00','#fdd835','#7cb342',
              '#2e7d32','#00acc1','#1e88e5','#283593','#8e24aa','#d81b60','#f8bbd0','#a1887f'];
@@ -1828,7 +1828,7 @@ function parseUrlCoords() {
   return null;
 }
 
-const initPos = parseUrlCoords() || { center: [-2.5, 118], zoom: 5 };
+const initPos = parseUrlCoords() || { center: [-7.82, 110.37], zoom: 14 };
 const map = L.map('map', {
   minZoom: 4,
   maxZoom: 19,
@@ -2719,7 +2719,7 @@ function broadcastChunkPixels(pixelList, isDelete = false) {
 }
 
 async function load() {
-  const z = map.getZoom();
+  const z = Math.round(map.getZoom());
   if (z < MIN_VIEW_Z) return;
 
   const b = map.getBounds();
@@ -2733,6 +2733,11 @@ async function load() {
   const minCy = chunkCoord(minY);
   const maxCy = chunkCoord(maxY);
 
+  const chunkCols = maxCx - minCx + 1;
+  const chunkRows = maxCy - minCy + 1;
+  // Batas aman: jika viewport memuat lebih dari 80 chunk, jangan proses untuk mencegah freeze
+  if (chunkCols * chunkRows > 80 || chunkCols < 1 || chunkRows < 1) return;
+
   const visibleChunks = [];
   for (let cy = minCy; cy <= maxCy; cy++) {
     for (let cx = minCx; cx <= maxCx; cx++) {
@@ -2745,18 +2750,27 @@ async function load() {
 
   if (SB_URL.includes('PROJECT-ID')) return;
 
-  // 1. Periksa cache IndexedDB untuk chunk yang belum ada di memori
+  // 1. Periksa cache IndexedDB secara paralel cepat untuk chunk yang belum ada di memori
+  const toCheck = visibleChunks.filter(c => !loadedChunks.has(c.k) && !loadingChunks.has(c.k));
   let cachedHit = false;
   const needFetch = [];
-  for (const c of visibleChunks) {
-    if (loadedChunks.has(c.k) || loadingChunks.has(c.k)) continue;
-    const cached = await ChunkCache.get(c.k);
-    if (cached) {
-      cached.forEach(([x, y, col]) => px.set(key(x, y), { x, y, c: col }));
-      loadedChunks.add(c.k);
-      cachedHit = true;
-    } else {
-      needFetch.push(c);
+
+  if (toCheck.length > 0) {
+    try {
+      const results = await Promise.all(
+        toCheck.map(c => ChunkCache.get(c.k).then(cached => ({ c, cached })).catch(() => ({ c, cached: null })))
+      );
+      for (const { c, cached } of results) {
+        if (cached && Array.isArray(cached)) {
+          cached.forEach(([x, y, col]) => px.set(key(x, y), { x, y, c: col }));
+          loadedChunks.add(c.k);
+          cachedHit = true;
+        } else {
+          needFetch.push(c);
+        }
+      }
+    } catch (e) {
+      toCheck.forEach(c => needFetch.push(c));
     }
   }
   if (cachedHit) redraw();
