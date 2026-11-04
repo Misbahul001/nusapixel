@@ -3,7 +3,7 @@
 // Versi cache bernomor: ubah versi saat merilis pembaruan shell
 // ==============================================================================
 
-const CACHE_NAME = 'nusapixel-shell-v17';
+const CACHE_NAME = 'nusapixel-shell-v18';
 
 // Aset app shell yang di-cache saat instalasi
 const APP_SHELL = [

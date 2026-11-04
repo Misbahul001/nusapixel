@@ -119,10 +119,10 @@ html,body{
   align-items:center;
   gap:6px;
   padding:4px 8px;
-  min-width:0;
+  min-width:max-content;
   max-width:none;
   background:var(--voxel-surface);
-  flex-shrink:1;
+  flex-shrink:0;
 }
 .cube-icon{
   width:24px;
@@ -138,9 +138,10 @@ html,body{
   box-shadow:0 2px 0 rgba(0,0,0,0.3);
 }
 .cube-icon svg{width:14px;height:14px}
-.hud-info{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.hud-info{display:flex;flex-direction:column;min-width:max-content;flex-shrink:0;line-height:1.15}
 #stock{font-size:13px;font-weight:900;color:#fff;letter-spacing:0.2px;white-space:nowrap}
 #sub{font-size:9.5px;font-weight:800;color:var(--mut);white-space:nowrap}
+#btn-help-stock{width:17px;height:17px;min-width:17px;min-height:17px;font-size:10px;margin-left:4px;flex-shrink:0}
 
 /* Floating Zoom Notice Banner */
 .zoom-banner{
@@ -323,16 +324,30 @@ html,body{
   50%{transform:translateY(-50%) scale(1.08);box-shadow:0 0 14px rgba(0, 230, 118, 0.75)}
 }
 
-@media (max-width: 375px) {
-  .top-hud{left:8px;right:8px;max-width:calc(100vw - 16px);gap:3px}
-  .hud-actions{gap:3px}
-  .hud-btn{width:30px;height:30px}
+@media (max-width: 480px) {
+  .top-hud{left:6px;right:6px;max-width:calc(100vw - 12px);gap:4px}
+  .hud-actions{gap:3px;flex-shrink:0}
+  .hud-btn{width:31px;height:31px}
   .hud-btn svg{width:15px;height:15px}
-  .hud-stock{padding:3px 6px;gap:5px}
+  .hud-stock{padding:3px 6px;gap:5px;flex-shrink:0}
   .cube-icon{width:20px;height:20px}
-  #stock{font-size:12px}
+  .cube-icon svg{width:12px;height:12px}
+  #stock{font-size:11.5px}
   #sub{font-size:8.5px}
+  #btn-help-stock{width:16px;height:16px;min-width:16px;min-height:16px;font-size:9.5px;margin-left:2px;flex-shrink:0}
   .dock-tool{width:45px;height:42px}
+}
+
+@media (max-width: 360px) {
+  .top-hud{left:4px;right:4px;max-width:calc(100vw - 8px);gap:2px}
+  .hud-actions{gap:2px}
+  .hud-btn{width:29px;height:29px}
+  .hud-btn svg{width:14px;height:14px}
+  .hud-stock{padding:2px 4px;gap:3px}
+  .cube-icon{width:18px;height:18px}
+  #stock{font-size:10.5px}
+  #sub{font-size:7.5px}
+  #btn-help-stock{width:14px;height:14px;min-width:14px;min-height:14px;font-size:8.5px;margin-left:1px}
 }
 
 .dock-tool{
@@ -2837,7 +2852,7 @@ function render(){
   const curRefillSec = Math.max(1, Math.round((boosted() ? cfg.boost_refill_sec : cfg.refill_sec) / mult));
 
   if (z < MIN_DRAW_Z) {
-    $('sub').textContent = 'Zoom Lv. ' + z + ' / ' + MIN_DRAW_Z;
+    $('sub').textContent = 'Zoom ' + z + '/' + MIN_DRAW_Z;
     $('sub').style.color = '#ffb74d';
   } else if (left) {
     $('sub').textContent = 'Boost ' + left + 'm' + (mult > 1 ? ` (${mult}x)` : '');
