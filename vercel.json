@@ -3,9 +3,9 @@
   "name": "pixelin-io",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/", "destination": "/beranda.html" },
-    { "source": "/game", "destination": "/index.html" },
-    { "source": "/play", "destination": "/index.html" }
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/game", "destination": "/game.html" },
+    { "source": "/play", "destination": "/game.html" }
   ],
   "headers": [
     {

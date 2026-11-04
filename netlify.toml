@@ -3,17 +3,17 @@
 
 [[redirects]]
   from = "/"
-  to = "/beranda.html"
+  to = "/index.html"
   status = 200
 
 [[redirects]]
   from = "/game"
-  to = "/index.html"
+  to = "/game.html"
   status = 200
 
 [[redirects]]
   from = "/play"
-  to = "/index.html"
+  to = "/game.html"
   status = 200
 
 [[headers]]
