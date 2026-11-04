@@ -208,7 +208,7 @@ create or replace function place_pixels(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   me players;
-  c config;
+  cfg config;
   n int := jsonb_array_length(p);
   new_count int;
   elapsed_sec numeric;
@@ -216,16 +216,16 @@ declare
   current_goal_n bigint;
   r record;
 begin
-  select * into c from config;
+  select * into cfg from config;
 
   -- Validasi ukuran batch dari config
-  if n < 1 or n > coalesce(c.max_batch_size, 20) then
-    raise exception 'Ukuran batch tidak valid (maksimal %)', coalesce(c.max_batch_size, 20);
+  if n < 1 or n > coalesce(cfg.max_batch_size, 20) then
+    raise exception 'Ukuran batch tidak valid (maksimal %)', coalesce(cfg.max_batch_size, 20);
   end if;
 
   -- Validasi koordinat wilayah Indonesia
   if exists (select 1 from jsonb_to_recordset(p) as t(x int, y int)
-             where x not between c.min_x and c.max_x or y not between c.min_y and c.max_y) then
+             where t.x not between cfg.min_x and cfg.max_x or t.y not between cfg.min_y and cfg.max_y) then
     raise exception 'Kanvas hanya mencakup wilayah Indonesia';
   end if;
 
@@ -233,11 +233,11 @@ begin
   if me.banned then raise exception 'Akun Anda diblokir karena melanggar aturan komunitas'; end if;
 
   -- Penegakan batas laju (rate limiting per pemain)
-  if me.last_placed_at is not null and coalesce(c.rate_limit_px_per_sec, 5) > 0 then
+  if me.last_placed_at is not null and coalesce(cfg.rate_limit_px_per_sec, 5) > 0 then
     elapsed_sec := extract(epoch from (now() - me.last_placed_at));
-    min_interval_sec := (n::numeric / c.rate_limit_px_per_sec) * 0.8;
+    min_interval_sec := (n::numeric / cfg.rate_limit_px_per_sec) * 0.8;
     if elapsed_sec < min_interval_sec then
-      raise exception 'Terlalu cepat. Kecepatan maksimal adalah % pixel per detik', c.rate_limit_px_per_sec;
+      raise exception 'Terlalu cepat. Kecepatan maksimal adalah % pixel per detik', cfg.rate_limit_px_per_sec;
     end if;
   end if;
 
@@ -273,7 +273,7 @@ begin
     end if;
 
     insert into pixels(x, y, c, uid, updated_at)
-      select x, y, c, v_uid, now() from jsonb_to_recordset(valid_req) as t(x int, y int, c smallint)
+      select t.x, t.y, t.c, v_uid, now() from jsonb_to_recordset(valid_req) as t(x int, y int, c smallint)
     on conflict (x, y) do update set
       c = excluded.c,
       uid = excluded.uid,
@@ -341,11 +341,11 @@ begin
   if exists (select 1 from pg_proc where proname = 'send' and pronamespace = 'realtime'::regnamespace) then
     for r in (
       select
-        floor(x::numeric / 64)::int as cx,
-        floor(y::numeric / 64)::int as cy,
-        jsonb_agg(jsonb_build_object('x', x, 'y', y, 'c', c)) as p_list
+        floor(t.x::numeric / 64)::int as cx,
+        floor(t.y::numeric / 64)::int as cy,
+        jsonb_agg(jsonb_build_object('x', t.x, 'y', t.y, 'c', t.c)) as p_list
       from jsonb_to_recordset(p) as t(x int, y int, c smallint)
-      group by floor(x::numeric / 64)::int, floor(y::numeric / 64)::int
+      group by floor(t.x::numeric / 64)::int, floor(t.y::numeric / 64)::int
     ) loop
       perform realtime.send(
         jsonb_build_object('p', r.p_list),
