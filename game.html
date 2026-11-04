@@ -1209,7 +1209,29 @@ let cfg = {
   max_stock: 500,
   max_batch_size: 20
 };
-let me, isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true, isAdminUser = false;
+let isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true, isAdminUser = false;
+let me = {
+  id: 'player-local',
+  stock: 75,
+  max_stock: 75,
+  t: Date.now(),
+  trust_level: 1,
+  active_days: 1,
+  total_placed: 0,
+  streak: 1,
+  claimed: [],
+  ads_today: 0,
+  nick: 'Pemain',
+  avatar_url: null,
+  avatar_color: '#38bdf8'
+};
+try {
+  const cached = localStorage.getItem('np_cached_me');
+  if (cached) {
+    const p = JSON.parse(cached);
+    if (p && typeof p.stock === 'number') me = { ...me, ...p, t: Date.now() };
+  }
+} catch (e) {}
 let activeTemplate = null; // Step 11: { w, h, anchorX, anchorY, opacity, grid }
 let px = new Map(), queue = new Map(), delQueue = new Map();
 const pixelInfoCache = new Map();
@@ -1872,7 +1894,10 @@ function updateCoordDisplay() {
   if (el) el.textContent = `X: ${x}, Y: ${y}`;
 }
 map.on('move', updateCoordDisplay);
-setTimeout(updateCoordDisplay, 100);
+setTimeout(() => {
+  updateCoordDisplay();
+  if (typeof render === 'function') render();
+}, 50);
 
 map.invalidateSize();
 setTimeout(() => map.invalidateSize(), 100);
@@ -4154,10 +4179,15 @@ map.getContainer().addEventListener('touchstart', e => {
   }
 
   if (activeMode === 'draw' || activeMode === 'erase') {
-    // 1 jari menyentuh: jalankan goresan / penghapusan
-    e.preventDefault();
-    const latlng = map.mouseEventToLatLng(e.touches[0]);
-    handleDrawStart(latlng);
+    if (Math.round(map.getZoom()) >= MIN_DRAW_Z) {
+      // 1 jari menyentuh saat zoom dekat: jalankan goresan / penghapusan
+      e.preventDefault();
+      const latlng = map.mouseEventToLatLng(e.touches[0]);
+      handleDrawStart(latlng);
+    } else {
+      // Saat zoom masih jauh (< MIN_DRAW_Z), biarkan sentuhan bebas menggeser peta!
+      // Jangan panggil e.preventDefault() agar Leaflet dragging berfungsi normal
+    }
   }
 }, { passive: false });
 
@@ -4216,6 +4246,12 @@ map.getContainer().addEventListener('touchcancel', handleTouchFinish);
 
 map.on('click', e => {
   if (isPinching || (Date.now() - pinchEndTime < 350)) return;
+  if (Math.round(map.getZoom()) < MIN_DRAW_Z) {
+    // Jika diketuk saat zoom jauh, otomatis zoom in ke titik tersebut!
+    map.setView(e.latlng, MIN_DRAW_Z);
+    toast('Mendekat otomatis ke level ' + MIN_DRAW_Z + ' untuk mulai menggambar');
+    return;
+  }
   if (activeMode === 'draw' || activeMode === 'erase') return;
   handleDrawStart(e.latlng);
   handleDrawEnd();

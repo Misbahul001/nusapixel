@@ -5,7 +5,7 @@
 <script>
 // Teruskan otomatis token autentikasi OAuth ke halaman permainan kanvas (/game)
 if (window.location.hash && (window.location.hash.includes('access_token=') || window.location.hash.includes('error='))) {
-  window.location.replace('/game' + window.location.hash);
+  window.location.replace('/game?v=25' + window.location.hash);
 }
 </script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -1076,7 +1076,7 @@ body {
 
     <!-- Header Right (CTA + Mobile Toggle) -->
     <div class="nav-right">
-      <a href="game.html" class="btn-cta-nav">
+      <a href="game.html?v=25" class="btn-cta-nav">
         <span>Buka Kanvas</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M5 12h14"></path>
@@ -1095,7 +1095,7 @@ body {
 
   <!-- Mobile Drawer Menu -->
   <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
-    <a href="game.html" class="mobile-nav-link" style="color:var(--cube-blue);font-weight:800;border-left:3px solid var(--cube-blue);padding-left:12px;">
+    <a href="game.html?v=25" class="mobile-nav-link" style="color:var(--cube-blue);font-weight:800;border-left:3px solid var(--cube-blue);padding-left:12px;">
       <span>Masuk ke Game Peta</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
@@ -1134,7 +1134,7 @@ body {
           Goreskan blok pixelmu di atas peta nyata Nusantara. Berkolaborasi dengan ribuan seniman lokal, taklukkan misi wilayah, dan bangun karya seni legendaris tanpa batas.
         </p>
         <div class="hero-actions">
-          <a href="game.html" class="btn-hero-primary">
+          <a href="game.html?v=25" class="btn-hero-primary">
             <span>Mulai Menggambar</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14"></path>
@@ -1587,7 +1587,7 @@ body {
         <p class="cta-desc">
           Buka kanvas sekarang juga. Tidak ada registrasi berbelit—cukup masuk dan mulai menggambar bersama komunitasmu.
         </p>
-        <a href="game.html" class="btn-cta-large" style="margin: 0 auto;">
+        <a href="game.html?v=25" class="btn-cta-large" style="margin: 0 auto;">
           <span>Buka Kanvas Peta Sekarang</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"></path>
@@ -1661,7 +1661,7 @@ body {
         <span>NusaPixel &bull; Kanvas Seni Gotong Royong Indonesia</span>
       </div>
       <ul class="footer-nav">
-        <li><a href="game.html">Buka Peta</a></li>
+        <li><a href="game.html?v=25">Buka Peta</a></li>
         <li><a href="javascript:void(0)" id="btn-footer-rules">Aturan Komunitas</a></li>
         <li><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></li>
       </ul>
