@@ -209,17 +209,17 @@ language plpgsql security definer set search_path = public as $$
 declare
   me players;
   cfg config;
-  n int := jsonb_array_length(p);
+  v_batch_len int := jsonb_array_length(p);
   new_count int;
   elapsed_sec numeric;
   min_interval_sec numeric;
   current_goal_n bigint;
-  r record;
+  v_rec record;
 begin
   select * into cfg from config;
 
   -- Validasi ukuran batch dari config
-  if n < 1 or n > coalesce(cfg.max_batch_size, 20) then
+  if v_batch_len < 1 or v_batch_len > coalesce(cfg.max_batch_size, 20) then
     raise exception 'Ukuran batch tidak valid (maksimal %)', coalesce(cfg.max_batch_size, 20);
   end if;
 
@@ -235,7 +235,7 @@ begin
   -- Penegakan batas laju (rate limiting per pemain)
   if me.last_placed_at is not null and coalesce(cfg.rate_limit_px_per_sec, 5) > 0 then
     elapsed_sec := extract(epoch from (now() - me.last_placed_at));
-    min_interval_sec := (n::numeric / cfg.rate_limit_px_per_sec) * 0.8;
+    min_interval_sec := (v_batch_len::numeric / cfg.rate_limit_px_per_sec) * 0.8;
     if elapsed_sec < min_interval_sec then
       raise exception 'Terlalu cepat. Kecepatan maksimal adalah % pixel per detik', cfg.rate_limit_px_per_sec;
     end if;
@@ -247,15 +247,15 @@ begin
     valid_req jsonb := '[]'::jsonb;
     rejected_list jsonb := '[]'::jsonb;
   begin
-    for r in (
+    for v_rec in (
       select t.x, t.y, t.c, px.protected_until, px.uid as owner_uid
       from jsonb_to_recordset(p) as t(x int, y int, c smallint)
       left join pixels px on px.x = t.x and px.y = t.y
     ) loop
-      if r.protected_until is not null and r.protected_until > now() and (r.owner_uid is distinct from v_uid) then
-        rejected_list := rejected_list || jsonb_build_array(jsonb_build_object('x', r.x, 'y', r.y, 'reason', 'protected'));
+      if v_rec.protected_until is not null and v_rec.protected_until > now() and (v_rec.owner_uid is distinct from v_uid) then
+        rejected_list := rejected_list || jsonb_build_array(jsonb_build_object('x', v_rec.x, 'y', v_rec.y, 'reason', 'protected'));
       else
-        valid_req := valid_req || jsonb_build_array(jsonb_build_object('x', r.x, 'y', r.y, 'c', r.c));
+        valid_req := valid_req || jsonb_build_array(jsonb_build_object('x', v_rec.x, 'y', v_rec.y, 'c', v_rec.c));
       end if;
     end loop;
 
@@ -294,21 +294,21 @@ begin
   end;
 
   -- Target Bersama / Global Community Goal (Step 12)
-  if exists (select 1 from information_schema.tables where table_name = 'global_goal') then
-    for r in (
-      select id, target, reward_boost_min
-      from global_goal
-      where now() between starts_at and ends_at and not rewarded
-      order by id desc limit 1
+  if exists (select 1 from information_schema.tables where table_name = 'global_goal') and coalesce(new_count, 0) > 0 then
+    for v_rec in (
+      select g.id, g.target, g.reward_boost_min
+      from global_goal g
+      where now() between g.starts_at and g.ends_at and not g.rewarded
+      order by g.id desc limit 1
     ) loop
-      update goal_counter
-      set n = n + n
-      where goal_id = r.id and shard = floor(random() * 8)::smallint;
+      update goal_counter gc
+      set n = gc.n + new_count
+      where gc.goal_id = v_rec.id and gc.shard = floor(random() * 8)::smallint;
 
-      select coalesce(sum(n), 0) into current_goal_n from goal_counter where goal_id = r.id;
-      if current_goal_n >= r.target then
-        update global_goal set rewarded = true where id = r.id;
-        update config set global_boost_until = greatest(coalesce(global_boost_until, now()), now()) + (r.reward_boost_min || ' minutes')::interval;
+      select coalesce(sum(gc.n), 0) into current_goal_n from goal_counter gc where gc.goal_id = v_rec.id;
+      if current_goal_n >= v_rec.target then
+        update global_goal set rewarded = true where id = v_rec.id;
+        update config set global_boost_until = greatest(coalesce(global_boost_until, now()), now()) + (v_rec.reward_boost_min || ' minutes')::interval;
       end if;
     end loop;
   end if;
@@ -316,9 +316,9 @@ begin
   -- Deteksi Wilayah Provinsi & Misi Jelajah (Step 13)
   if exists (select 1 from information_schema.tables where table_name = 'regions') then
     with batch_regs as (
-      select distinct r.id
+      select distinct reg_tbl.id
       from jsonb_to_recordset(p) as t(x int, y int)
-      join regions r on t.x between r.min_x and r.max_x and t.y between r.min_y and r.max_y
+      join regions reg_tbl on t.x between reg_tbl.min_x and reg_tbl.max_x and t.y between reg_tbl.min_y and reg_tbl.max_y
     )
     update players set
       regions_today = (
@@ -339,7 +339,7 @@ begin
 
   -- Siarkan Realtime Broadcast per chunk jika realtime.send tersedia
   if exists (select 1 from pg_proc where proname = 'send' and pronamespace = 'realtime'::regnamespace) then
-    for r in (
+    for v_rec in (
       select
         floor(t.x::numeric / 64)::int as cx,
         floor(t.y::numeric / 64)::int as cy,
@@ -348,9 +348,9 @@ begin
       group by floor(t.x::numeric / 64)::int, floor(t.y::numeric / 64)::int
     ) loop
       perform realtime.send(
-        jsonb_build_object('p', r.p_list),
+        jsonb_build_object('p', v_rec.p_list),
         'pixels',
-        'chunk:' || r.cx || '_' || r.cy
+        'chunk:' || v_rec.cx || '_' || v_rec.cy
       );
     end loop;
   end if;
