@@ -1148,7 +1148,7 @@ const SB_KEY = 'sb_publishable_MaXyb37-4s4iIi0N2AgB4w_bDmPGsq7';
 // ====================================================================
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const CELL = 0.001;                  // ukuran 1 pixel dalam derajat (±110 m, 10x lebih besar & chunky)
-const MIN_VIEW_Z = 6;                // zoom minimal agar gambar tetap tampil di peta (tidak hilang saat zoom out)
+const MIN_VIEW_Z = 4;                // zoom minimal agar gambar tetap tampil di peta (tidak hilang saat zoom out)
 const MIN_DRAW_Z = 12;               // zoom minimal untuk mulai menggambar
 const PAL = ['#000000','#ffffff','#9e9e9e','#6d4c41','#e53935','#fb8c00','#fdd835','#7cb342',
              '#2e7d32','#00acc1','#1e88e5','#283593','#8e24aa','#d81b60','#f8bbd0','#a1887f'];
@@ -1184,7 +1184,18 @@ try {
 } catch (e) {}
 let col = savedColor;
 let activeMode = 'draw'; // 'draw', 'pan', 'info', 'pipette', 'erase'
-let cfg, me, isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true, isAdminUser = false;
+let cfg = {
+  min_x: 94900,
+  max_x: 141100,
+  min_y: -11100,
+  max_y: 6300,
+  refill_sec: 8,
+  boost_refill_sec: 4,
+  start_stock: 75,
+  max_stock: 500,
+  max_batch_size: 20
+};
+let me, isAnon = true, currentUserEmail = '', isEraser = false, showGrid = true, isAdminUser = false;
 let activeTemplate = null; // Step 11: { w, h, anchorX, anchorY, opacity, grid }
 let px = new Map(), queue = new Map(), delQueue = new Map();
 const pixelInfoCache = new Map();
@@ -1797,11 +1808,23 @@ function parseUrlCoords() {
   if (!isNaN(qx) && !isNaN(qy)) {
     const lat = qy * CELL + CELL / 2;
     const lng = qx * CELL + CELL / 2;
-    const clampZ = Math.max(5, Math.min(19, qz));
+    const clampZ = Math.max(4, Math.min(19, qz));
     if (L.latLngBounds([[-18, 90], [14, 146]]).contains([lat, lng])) {
       return { center: [lat, lng], zoom: clampZ };
     }
   }
+  try {
+    const lastSaved = localStorage.getItem('np_last_view');
+    if (lastSaved) {
+      const parsed = JSON.parse(lastSaved);
+      if (parsed && Array.isArray(parsed.center) && parsed.zoom) {
+        const clampZ = Math.max(4, Math.min(19, parsed.zoom));
+        if (L.latLngBounds([[-18, 90], [14, 146]]).contains(parsed.center)) {
+          return { center: parsed.center, zoom: clampZ };
+        }
+      }
+    }
+  } catch (e) {}
   return null;
 }
 
@@ -1821,6 +1844,9 @@ function updateHashOnMove() {
   const z = Math.round(map.getZoom());
   const hash = `#${z}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`;
   history.replaceState(null, '', location.pathname + hash);
+  try {
+    localStorage.setItem('np_last_view', JSON.stringify({ center: [c.lat, c.lng], zoom: z }));
+  } catch (e) {}
 }
 map.on('moveend', updateHashOnMove);
 
@@ -2551,7 +2577,7 @@ const loadedChunks = new Set();
 const loadingChunks = new Set();
 
 // Cache Klien Berbasis IndexedDB dengan TTL (Step 5: Kompresi & Hemat Egress)
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 menit masa berlaku
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 menit masa berlaku agar selalu segar
 const ChunkCache = (() => {
   let dbPromise = null;
   const getDB = () => {
@@ -2599,6 +2625,24 @@ const ChunkCache = (() => {
         const tx = db.transaction('chunks', 'readwrite');
         const store = tx.objectStore('chunks');
         store.put({ k: key, t: Date.now(), p: pixels });
+      } catch (e) {}
+    },
+    async del(key) {
+      try {
+        const db = await getDB();
+        if (!db) return;
+        const tx = db.transaction('chunks', 'readwrite');
+        const store = tx.objectStore('chunks');
+        store.delete(key);
+      } catch (e) {}
+    },
+    async clear() {
+      try {
+        const db = await getDB();
+        if (!db) return;
+        const tx = db.transaction('chunks', 'readwrite');
+        const store = tx.objectStore('chunks');
+        store.clear();
       } catch (e) {}
     }
   };
@@ -2826,7 +2870,9 @@ function syncRefillStock() {
   // Hitung penambahan regenerasi sesuai waktu berjalan secara bertahap
   const now = Date.now();
   const mult = (currentEventState && currentEventState.event && currentEventState.event.refill_mult) || 1;
-  const refillSec = Math.max(0.5, ((boosted() ? cfg.boost_refill_sec : cfg.refill_sec) || 8) / mult);
+  const boostSec = (cfg && cfg.boost_refill_sec) || 4;
+  const normalSec = (cfg && cfg.refill_sec) || 8;
+  const refillSec = Math.max(0.5, ((boosted() ? boostSec : normalSec) || 8) / mult);
   const elapsedSec = (now - me.t) / 1000;
 
   if (elapsedSec <= 0) return;
@@ -2907,7 +2953,9 @@ function render(){
   const left = bUntil ? Math.ceil((bUntil - Date.now()) / 60000) : 0;
   const z = Math.round(map.getZoom());
   const mult = (currentEventState && currentEventState.event && currentEventState.event.refill_mult) || 1;
-  const curRefillSec = Math.max(1, Math.round((boosted() ? cfg.boost_refill_sec : cfg.refill_sec) / mult));
+  const boostSec = (cfg && cfg.boost_refill_sec) || 4;
+  const normalSec = (cfg && cfg.refill_sec) || 8;
+  const curRefillSec = Math.max(1, Math.round(((boosted() ? boostSec : normalSec) || 8) / mult));
   const fullInfo = getTimeUntilFull();
 
   const sp = $('stock-pill');
@@ -3353,6 +3401,7 @@ function paintCell(x, y) {
       me.stock = Math.min(getMaxStock(), me.stock + 1);
     }
     delQueue.set(k, { x, y });
+    ChunkCache.del(chunkKey(chunkCoord(x), chunkCoord(y)));
     Sfx.erase();
     return true;
   }
@@ -3376,6 +3425,7 @@ function paintCell(x, y) {
   px.set(k, { x, y, c: col });
   if (delQueue.has(k)) delQueue.delete(k);
   queue.set(k, { x, y, c: col, isNew: wasInQueue ? queue.get(k).isNew : isNew });
+  ChunkCache.del(chunkKey(chunkCoord(x), chunkCoord(y)));
   Sfx.place();
   return true;
 }
@@ -3916,7 +3966,10 @@ map.on('click', e => {
 setInterval(async () => {
   if (delQueue.size && !isDrawing) {
     const dq = [...delQueue.values()].slice(0, 20);
-    dq.forEach(v => delQueue.delete(key(v.x, v.y)));
+    dq.forEach(v => {
+      delQueue.delete(key(v.x, v.y));
+      ChunkCache.del(chunkKey(chunkCoord(v.x), chunkCoord(v.y)));
+    });
     broadcastChunkPixels(dq, true);
     if (!SB_URL.includes('PROJECT-ID')) {
       const {data, error} = await sb.rpc('delete_pixels', {p: dq});
@@ -3944,6 +3997,7 @@ setInterval(async () => {
   q.forEach(v => {
     checkPixelRegion(v.x, v.y);
     queue.delete(key(v.x, v.y));
+    ChunkCache.del(chunkKey(chunkCoord(v.x), chunkCoord(v.y)));
   });
   broadcastChunkPixels(q, false);
   const {data, error} = await sb.rpc('place_pixels', {p: q});
@@ -5665,53 +5719,137 @@ setTimeout(pollEventState, 500);
 
 // ---------- Mulai ----------
 (async () => {
-  checkUrlInvite();
-  if (SB_URL.includes('PROJECT-ID')) {
-    cfg = {
-      max_stock: 500, start_stock: 75, refill_sec: 8, boost_refill_sec: 4,
-      min_x: Math.floor(94.5 / CELL), max_x: Math.floor(141.5 / CELL),
-      min_y: Math.floor(-11.5 / CELL), max_y: Math.floor(6.5 / CELL),
-      ad_reward: 25, ad_daily_cap: 5
-    };
-    let demoState = {
-      stock: 75, max_stock: 75, trust_level: 1, active_days: 1, total_placed: 0,
-      boost_until: new Date().toISOString(), streak: 1, best_streak: 1,
-      day_placed: 0, nick: 'Pemain Demo', regions_today: [], regions_alltime: [],
-      claimed: [], ads_today: 0, ad_boosts_today: 0, last_daily: null
-    };
-    try {
-      const saved = localStorage.getItem('np_demo_me');
-      if (saved) demoState = { ...demoState, ...JSON.parse(saved) };
-    } catch (e) {}
-    setMe(demoState);
-    toast('Mode Demo: Sambungkan Supabase di index.html untuk multiplayer');
-    return;
-  }
-  const {data:{session}} = await sb.auth.getSession();
-  if (window.location.hash && window.location.hash.includes('access_token=')) {
-    history.replaceState(null, '', location.pathname);
-  }
-  if (!session) { const r = await sb.auth.signInAnonymously(); if (r.error) return toast('Login anonim belum aktif di Supabase'); }
-  const user = (await sb.auth.getUser()).data.user;
-  isAnon = !!user?.is_anonymous;
-  currentUserEmail = user?.email || (user?.user_metadata && user.user_metadata.email) || '';
-  if (!isAnon && currentUserEmail) {
-    const userName = user?.user_metadata?.full_name || currentUserEmail;
-    toast('Berhasil masuk sebagai ' + userName);
-  }
-  const ep = new URLSearchParams(location.search);
-  if (ep.get('error_description')) {
-    toast('Gagal menghubungkan akun: ' + ep.get('error_description') + '. Kalau akun sudah terdaftar, silakan tekan Masuk.');
-    history.replaceState(null, '', location.pathname);
-  }
-  cfg = (await sb.from('config').select('*').single()).data;
-  await loadMissions();
   try {
-    const { data: isAdm } = await sb.rpc('is_admin');
-    isAdminUser = !!isAdm;
-  } catch (e) { isAdminUser = false; }
-  const s = await sb.rpc('get_state'); if (s.error) return toast(s.error.message);
-  setMe(s.data); load();
+    checkUrlInvite();
+    if (SB_URL.includes('PROJECT-ID')) {
+      cfg = {
+        max_stock: 500, start_stock: 75, refill_sec: 8, boost_refill_sec: 4,
+        min_x: Math.floor(94.5 / CELL), max_x: Math.floor(141.5 / CELL),
+        min_y: Math.floor(-11.5 / CELL), max_y: Math.floor(6.5 / CELL),
+        ad_reward: 25, ad_daily_cap: 5
+      };
+      let demoState = {
+        stock: 75, max_stock: 75, trust_level: 1, active_days: 1, total_placed: 0,
+        boost_until: new Date().toISOString(), streak: 1, best_streak: 1,
+        day_placed: 0, nick: 'Pemain Demo', regions_today: [], regions_alltime: [],
+        claimed: [], ads_today: 0, ad_boosts_today: 0, last_daily: null
+      };
+      try {
+        const saved = localStorage.getItem('np_demo_me');
+        if (saved) demoState = { ...demoState, ...JSON.parse(saved) };
+      } catch (e) {}
+      setMe(demoState);
+      toast('Mode Demo: Sambungkan Supabase di index.html untuk multiplayer');
+      return;
+    }
+
+    let session = null;
+    try {
+      const sessRes = await sb.auth.getSession();
+      session = sessRes?.data?.session || null;
+    } catch (e) {
+      console.warn('Gagal membaca sesi:', e);
+    }
+
+    if (window.location.hash && window.location.hash.includes('access_token=')) {
+      history.replaceState(null, '', location.pathname);
+    }
+
+    if (!session) {
+      try {
+        const r = await sb.auth.signInAnonymously();
+        if (r?.error) console.warn('Login anonim:', r.error.message);
+        else session = r?.data?.session || null;
+      } catch (e) {
+        console.warn('Exception sign in anonim:', e);
+      }
+    }
+
+    let user = session?.user || null;
+    if (!user) {
+      try {
+        const uRes = await sb.auth.getUser();
+        user = uRes?.data?.user || null;
+      } catch (e) {}
+    }
+
+    isAnon = !user || !!user.is_anonymous;
+    currentUserEmail = user?.email || (user?.user_metadata && user.user_metadata.email) || '';
+    if (!isAnon && user) {
+      const gName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || currentUserEmail;
+      const gAvatar = user.user_metadata && (user.user_metadata.avatar_url || user.user_metadata.picture);
+      if (gAvatar && !localStorage.getItem('np_user_avatar')) {
+        try { localStorage.setItem('np_user_avatar', gAvatar); } catch (e) {}
+      }
+      if (currentUserEmail) {
+        try { localStorage.setItem('np_user_email', currentUserEmail); } catch (e) {}
+      }
+      if (gName && !localStorage.getItem('np_user_nick')) {
+        try { localStorage.setItem('np_user_nick', gName); } catch (e) {}
+      }
+      toast('Berhasil masuk sebagai ' + gName);
+    }
+
+    const ep = new URLSearchParams(location.search);
+    if (ep.get('error_description')) {
+      toast('Gagal menghubungkan akun: ' + ep.get('error_description') + '. Kalau akun sudah terdaftar, silakan tekan Masuk.');
+      history.replaceState(null, '', location.pathname);
+    }
+
+    try {
+      const cfgRes = await sb.from('config').select('*').single();
+      if (cfgRes?.data) cfg = { ...cfg, ...cfgRes.data };
+    } catch (e) {
+      console.warn('Gagal mengambil remote config:', e);
+    }
+
+    try {
+      await loadMissions();
+    } catch (e) {}
+
+    try {
+      const { data: isAdm } = await sb.rpc('is_admin');
+      isAdminUser = !!isAdm;
+    } catch (e) {
+      isAdminUser = false;
+    }
+
+    let playerState = null;
+    try {
+      const s = await sb.rpc('get_state');
+      if (s?.data) {
+        playerState = s.data;
+      } else if (s?.error) {
+        console.warn('get_state error:', s.error);
+      }
+    } catch (e) {
+      console.warn('get_state exception:', e);
+    }
+
+    if (!playerState) {
+      playerState = {
+        id: user?.id || 'player-local',
+        stock: (cfg && cfg.start_stock) || 75,
+        max_stock: (cfg && cfg.start_stock) || 75,
+        t: Date.now(),
+        trust_level: isAnon ? 1 : 2,
+        active_days: 1,
+        total_placed: 0,
+        streak: 1,
+        claimed: [],
+        ads_today: 0
+      };
+    }
+
+    setMe(playerState);
+    load();
+  } catch (err) {
+    console.error('Fatal init error:', err);
+    if (!me) {
+      setMe({ stock: 75, max_stock: 75, t: Date.now() });
+    }
+    load();
+  }
 })();
 
 // ---------- PWA & Service Worker (Step 14) ----------
