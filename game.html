@@ -1488,6 +1488,7 @@ function showPixelZoomGuideModal() {
   const isReady = z >= MIN_DRAW_Z;
   const mult = (currentEventState && currentEventState.event && currentEventState.event.refill_mult) || 1;
   const curRefillSec = typeof cfg !== 'undefined' ? Math.max(1, Math.round(((typeof boosted === 'function' && boosted()) ? cfg.boost_refill_sec : cfg.refill_sec) / mult)) : 8;
+  const fullInfo = typeof getTimeUntilFull === 'function' ? getTimeUntilFull() : { isFull: true, etaClock: '', durationStr: '0d', needed: 0 };
 
   const html = `
     <!-- Status Ringkasan Langsung -->
@@ -1502,6 +1503,21 @@ function showPixelZoomGuideModal() {
           <div style="font-size:10.5px;color:var(--mut);font-weight:800;text-transform:uppercase">Jarak Zoom Peta</div>
           <div style="font-size:17px;font-weight:900;color:${isReady ? '#4ade80' : '#fbbf24'};margin-top:2px">Zoom Lv. ${z} <span style="font-size:12px;color:var(--mut)">/ ${MIN_DRAW_Z}</span></div>
           <div style="font-size:10px;color:${isReady ? '#4ade80' : '#fb923c'};margin-top:2px">${isReady ? '✓ Siap Menggambar' : '⚠ Terlalu Jauh'}</div>
+        </div>
+        <!-- Kartu Estimasi Pixel Penuh -->
+        <div style="background:#171226;border:1.5px solid ${fullInfo.isFull ? 'rgba(74,222,128,0.35)' : 'rgba(56,189,248,0.35)'};border-radius:8px;padding:10px 12px;grid-column:span 2;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:10px;color:var(--mut);font-weight:800;text-transform:uppercase">Estimasi Kapan Pixel Penuh</div>
+            <div style="font-size:13.5px;font-weight:900;color:${fullInfo.isFull ? '#69F0AE' : '#38bdf8'};margin-top:2px">
+              ${fullInfo.isFull ? '✓ STOK SUDAH PENUH MAKSIMAL' : `Pukul ${fullInfo.etaClock} WIB · ${fullInfo.durationStr} lagi`}
+            </div>
+            <div style="font-size:9.5px;color:#cbd5e1;margin-top:3px;line-height:1.4">
+              ${fullInfo.isFull 
+                ? `Stok Anda (${av}/${maxStock} px) sudah siap digunakan untuk menggambar sekarang.` 
+                : `Masih membutuhkan <b>${fullInfo.needed} pixel</b> lagi. Silakan kembali pada pukul <b>${fullInfo.etaClock} WIB</b> untuk menggambar dengan stok penuh!`}
+            </div>
+          </div>
+          <div style="font-size:24px;margin-left:8px">${fullInfo.isFull ? '⚡' : '⏳'}</div>
         </div>
       </div>
     </div>
@@ -2840,6 +2856,48 @@ function avail(){
   return Math.max(0, Math.floor(me.stock) - pendingNew);
 }
 
+function getTimeUntilFull() {
+  if (!me) return { isFull: true, text: 'Penuh', etaClock: '', durationStr: '0d', remainingSec: 0, needed: 0 };
+  const av = typeof avail === 'function' ? avail() : (me.stock || 0);
+  const maxStock = typeof getMaxStock === 'function' ? getMaxStock() : (me.max_stock || 75);
+  if (av >= maxStock) {
+    return { isFull: true, text: 'Penuh', etaClock: '', durationStr: '0d', remainingSec: 0, needed: 0 };
+  }
+  const mult = (typeof currentEventState !== 'undefined' && currentEventState && currentEventState.event && currentEventState.event.refill_mult) || 1;
+  const isB = typeof boosted === 'function' && boosted();
+  const baseSec = (typeof cfg !== 'undefined' && cfg) ? (isB ? cfg.boost_refill_sec : cfg.refill_sec) : 8;
+  const curRefillSec = Math.max(1, Math.round(baseSec / mult));
+  const needed = Math.max(0, maxStock - av);
+  const totalSec = needed * curRefillSec;
+
+  let durationStr = '';
+  if (totalSec < 60) {
+    durationStr = totalSec + 'd';
+  } else if (totalSec < 3600) {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    durationStr = m + 'm' + (s > 0 ? ' ' + s + 'd' : '');
+  } else {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    durationStr = h + 'j' + (m > 0 ? ' ' + m + 'm' : '');
+  }
+
+  const etaDate = new Date(Date.now() + totalSec * 1000);
+  const hh = String(etaDate.getHours()).padStart(2, '0');
+  const mm = String(etaDate.getMinutes()).padStart(2, '0');
+  const etaClock = `${hh}:${mm}`;
+
+  return {
+    isFull: false,
+    needed,
+    remainingSec: totalSec,
+    durationStr,
+    etaClock,
+    curRefillSec
+  };
+}
+
 function render(){
   if (!me) return;
   const av = avail();
@@ -2850,16 +2908,33 @@ function render(){
   const z = Math.round(map.getZoom());
   const mult = (currentEventState && currentEventState.event && currentEventState.event.refill_mult) || 1;
   const curRefillSec = Math.max(1, Math.round((boosted() ? cfg.boost_refill_sec : cfg.refill_sec) / mult));
+  const fullInfo = getTimeUntilFull();
+
+  const sp = $('stock-pill');
+  if (sp) {
+    sp.title = fullInfo.isFull 
+      ? `Stok: ${av}/${maxStock} (Sudah Penuh)` 
+      : `Stok: ${av}/${maxStock} px · Penuh dalam ${fullInfo.durationStr} (sekitar pukul ${fullInfo.etaClock})`;
+  }
 
   if (z < MIN_DRAW_Z) {
-    $('sub').textContent = 'Zoom ' + z + '/' + MIN_DRAW_Z;
-    $('sub').style.color = '#ffb74d';
+    const showZoom = fullInfo.isFull || (Math.floor(Date.now() / 3500) % 2 === 0);
+    if (showZoom) {
+      $('sub').textContent = 'Zoom ' + z + '/' + MIN_DRAW_Z;
+      $('sub').style.color = '#ffb74d';
+    } else {
+      $('sub').textContent = 'Penuh ~' + fullInfo.etaClock;
+      $('sub').style.color = '#38bdf8';
+    }
   } else if (left) {
-    $('sub').textContent = 'Boost ' + left + 'm' + (mult > 1 ? ` (${mult}x)` : '');
+    $('sub').textContent = 'Boost ' + left + 'm · ' + (fullInfo.isFull ? 'Penuh' : fullInfo.durationStr);
+    $('sub').style.color = '#69F0AE';
+  } else if (fullInfo.isFull) {
+    $('sub').textContent = '✓ Pixel Penuh';
     $('sub').style.color = '#69F0AE';
   } else {
-    $('sub').textContent = '+1 / ' + curRefillSec + 's' + (mult > 1 ? ` (${mult}x Event)` : '');
-    $('sub').style.color = mult > 1 ? '#fb923c' : 'var(--mut)';
+    $('sub').textContent = 'Penuh ' + fullInfo.durationStr + ' (~' + fullInfo.etaClock + ')';
+    $('sub').style.color = '#38bdf8';
   }
 
   const zb = $('zoom-banner');
@@ -3291,7 +3366,8 @@ function paintCell(x, y) {
     if (!stockEmptyWarned) {
       stockEmptyWarned = true;
       Sfx.error();
-      toast('Stok habis! Tunggu isi ulang atau ambil hadiah.');
+      const fi = getTimeUntilFull();
+      toast('Stok pixel habis! Penuh kembali dalam ' + fi.durationStr + ' (~' + fi.etaClock + ') atau ambil hadiah.');
       setTimeout(() => { stockEmptyWarned = false; }, 3000);
     }
     return false;
@@ -3680,7 +3756,8 @@ function handleDrawMove(latlng) {
         if (!stockEmptyWarned) {
           stockEmptyWarned = true;
           Sfx.error();
-          toast('Stok habis! Tunggu isi ulang atau ambil hadiah.');
+          const fi = getTimeUntilFull();
+          toast('Stok pixel habis! Penuh kembali dalam ' + fi.durationStr + ' (~' + fi.etaClock + ') atau ambil hadiah.');
           setTimeout(() => { stockEmptyWarned = false; }, 3000);
         }
         break;
