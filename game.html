@@ -32,7 +32,7 @@ window.addEventListener('unhandledrejection', function(e) {
 if ('caches' in window) {
   caches.keys().then(function(keys) {
     keys.forEach(function(k) {
-      if (k !== 'nusapixel-shell-v28') caches.delete(k);
+      if (k !== 'nusapixel-shell-v29') caches.delete(k);
     });
   });
 }
@@ -1448,7 +1448,11 @@ function uiPrompt({
     const countEl = $('custom-dialog-count');
     setTimeout(() => {
       inputEl.focus();
-      if (inputEl.setSelectionRange) inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+      try {
+        if (inputEl.setSelectionRange && ['text', 'search', 'url', 'tel', 'password'].includes(inputEl.type)) {
+          inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+        }
+      } catch (err) {}
     }, 50);
 
     inputEl.oninput = () => {
@@ -4961,15 +4965,29 @@ function panel(tab){
           <div style="display:flex;align-items:center;gap:6px">
             <b style="font-size:12px;color:#fff">Akun & Keamanan</b>
             <span style="font-size:9.5px;padding:1px 6px;border-radius:4px;background:${isAnon ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'};color:${isAnon ? '#fca5a5' : '#86efac'};border:1px solid ${isAnon ? '#ef4444' : '#22c55e'}">
-              ${isAnon ? 'Akun Tamu' : 'Akun Terhubung'}
+              ${isAnon ? 'Akun Tamu' : 'Akun Google'}
             </span>
           </div>
         </div>
         <small style="color:var(--mut);display:block;line-height:1.4;margin-bottom:8px">
-          ${isAnon ? 'Akun Anda saat ini anonim. Hubungkan Google atau Email agar foto, nama, dan progres tersimpan permanen.' : 'Akun terhubung: ' + esc(currentUserEmail || 'Google / Email')}
+          ${isAnon ? 'Akun saat ini anonim. Masuk dengan Google OAuth agar foto profil, nama pemain, dan riwayat pixel tersimpan permanen.' : 'Masuk sebagai: ' + esc(currentUserEmail || (me && me.nick) || 'Google')}
         </small>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-          ${isAnon ? '<button class="m" id="gl" title="Tautkan akun Google Anda">Google</button><button class="m" id="em" title="Tautkan email Anda">Email</button><button class="m" id="gi" style="background:#475569;color:#fff;border-color:#64748b" title="Masuk ke akun yang sudah terdaftar">Masuk</button>' : '<button class="m" id="lo">Keluar</button>'}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center">
+          ${isAnon ? `
+            <button class="m" id="gl" style="display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border-color:#1d4ed8;padding:6px 14px;font-weight:800;border-radius:6px" title="Masuk / Tautkan Akun Google">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/></svg>
+              Masuk dengan Google
+            </button>
+          ` : `
+            <button class="m" id="btn-switch-account" style="background:#3b82f6;color:#fff;border-color:#2563eb;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;border-radius:6px" title="Ganti ke Akun Google Lain">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+              Ganti Akun
+            </button>
+            <button class="m" id="lo" style="background:#ef4444;color:#fff;border-color:#dc2626;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;border-radius:6px" title="Keluar dari akun">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Keluar
+            </button>
+          `}
         </div>
       </div>
 
@@ -5366,79 +5384,88 @@ function panel(tab){
   };
 function wireAuthButtons() {
   const back = location.origin + location.pathname;
-  if ($('gl')) $('gl').onclick = async () => {
-    Sfx.click();
-    if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
-    const r = await sb.auth.linkIdentity({provider: 'google', options: {redirectTo: back}});
-    if (r.error) {
-      if (r.error.message && r.error.message.toLowerCase().includes('manual linking is disabled')) {
-        const proceed = await uiConfirm({
-          title: 'Masuk Akun Google',
-          message: 'Fitur tautkan instan belum diaktifkan di server. Masuk langsung dengan akun Google Anda?',
-          confirmText: 'Lanjutkan Masuk Google',
-          cancelText: 'Batal'
+
+  // 1. Masuk dengan Google OAuth
+  if ($('gl')) {
+    $('gl').onclick = async () => {
+      Sfx.click();
+      if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
+      toast('Membuka autentikasi Google...');
+      try {
+        await sb.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: back,
+            queryParams: { prompt: 'select_account' }
+          }
         });
-        if (proceed) {
-          await sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: back}});
-        }
-      } else {
-        toast(r.error.message);
+      } catch (err) {
+        toast('Gagal membuka login Google: ' + (err.message || err));
       }
-    }
-  };
-  if ($('em')) $('em').onclick = async () => {
-    Sfx.click();
-    if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
-    const email = await uiPrompt({
-      title: 'Tautkan Email Akun',
-      desc: 'Masukkan alamat email untuk menghubungkan akun ini agar progres tersimpan aman.',
-      placeholder: 'alamat@email.com',
-      inputType: 'email',
-      confirmText: 'Kirim Tautan',
-      cancelText: 'Batal',
-      icon: 'mail'
-    });
-    if (!email || !email.trim()) return;
-    const { data, error } = await sb.auth.updateUser({ email: email.trim() });
-    if (error) toast(error.message);
-    else toast('Tautan konfirmasi dikirim ke email Anda! Buka email untuk verifikasi.');
-  };
-  if ($('gi')) $('gi').onclick = async () => {
-    Sfx.click();
-    if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
-    const useGoogle = await uiConfirm({
-      title: 'Metode Masuk Akun',
-      message: 'Pilih metode untuk masuk ke akun Anda:\n• Google: Masuk cepat dengan akun Google\n• Email OTP: Masuk dengan tautan verifikasi email',
-      confirmText: 'Google',
-      cancelText: 'Email OTP'
-    });
-    if (useGoogle) {
+    };
+  }
+
+  // 2. Tombol Ganti Akun (Sign out & buka Google OAuth untuk memilih akun lain)
+  if ($('btn-switch-account')) {
+    $('btn-switch-account').onclick = async () => {
+      Sfx.click();
       const proceed = await uiConfirm({
-        title: 'Masuk Akun Google',
-        message: 'Masuk ke akun Google yang sudah terdaftar? Progres akun tamu lokal ini tidak akan digabungkan.',
-        confirmText: 'Lanjutkan',
+        title: 'Ganti Akun Google',
+        message: 'Anda akan dialihkan ke layar Google untuk memilih akun lain. Lanjutkan?',
+        confirmText: 'Ganti Akun',
         cancelText: 'Batal'
       });
-      if (proceed) {
-        await sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: back}});
+      if (!proceed) return;
+
+      try {
+        localStorage.removeItem('np_user_email');
+        localStorage.removeItem('np_user_nick');
+        localStorage.removeItem('np_user_avatar');
+        localStorage.removeItem('np_user_avatar_color');
+        localStorage.removeItem('np_cached_me');
+        await sb.auth.signOut();
+      } catch (e) {}
+
+      toast('Membuka pemilih akun Google...');
+      try {
+        await sb.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: back,
+            queryParams: { prompt: 'select_account' }
+          }
+        });
+      } catch (err) {
+        toast('Gagal membuka login Google: ' + (err.message || err));
       }
-    } else {
-      const email = await uiPrompt({
-        title: 'Masuk dengan Email',
-        desc: 'Masukkan alamat email yang sudah terdaftar untuk menerima Magic Link masuk instan.',
-        placeholder: 'alamat@email.com',
-        inputType: 'email',
-        confirmText: 'Kirim Magic Link',
-        cancelText: 'Batal',
-        icon: 'mail'
+    };
+  }
+
+  // 3. Tombol Keluar (Logout)
+  if ($('lo')) {
+    $('lo').onclick = async () => {
+      Sfx.click();
+      const proceed = await uiConfirm({
+        title: 'Konfirmasi Keluar',
+        message: 'Apakah Anda yakin ingin keluar dari akun NusaPixel ini?',
+        confirmText: 'Keluar',
+        cancelText: 'Batal'
       });
-      if (!email || !email.trim()) return;
-      const { error } = await sb.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: back } });
-      if (error) toast(error.message);
-      else toast('Magic Link login telah dikirim ke ' + email.trim() + '!');
-    }
-  };
-  if ($('lo')) $('lo').onclick = async () => { Sfx.click(); await sb.auth.signOut(); location.reload(); };
+      if (!proceed) return;
+
+      try {
+        localStorage.removeItem('np_user_email');
+        localStorage.removeItem('np_user_nick');
+        localStorage.removeItem('np_user_avatar');
+        localStorage.removeItem('np_user_avatar_color');
+        localStorage.removeItem('np_cached_me');
+        await sb.auth.signOut();
+      } catch (e) {}
+
+      toast('Berhasil keluar. Memuat ulang...');
+      setTimeout(() => { location.reload(); }, 350);
+    };
+  }
 }
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
   if ($('tt')) $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
