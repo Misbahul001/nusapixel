@@ -1971,7 +1971,7 @@ linesGrid.createTile = function(c) {
 };
 linesGrid.addTo(map);
 setTimeout(() => {
-  if (linesGrid.getContainer()) linesGrid.getContainer().style.pointerEvents = 'none';
+  if (typeof linesGrid.getContainer === 'function' && linesGrid.getContainer()) linesGrid.getContainer().style.pointerEvents = 'none';
 }, 100);
 map.on('zoomend', () => { if (showGrid) linesGrid.redraw(); });
 function paintDirectToTile(pxX, pxY, colorHex) {
@@ -6171,14 +6171,26 @@ window.addEventListener('offline', () => {
 });
 
 if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update().catch(() => {});
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
       reg.onupdatefound = () => {
         const inst = reg.installing;
         if (inst) {
           inst.onstatechange = () => {
             if (inst.state === 'installed' && navigator.serviceWorker.controller) {
-              toast('Versi baru tersedia. Muat ulang.');
+              inst.postMessage({ type: 'SKIP_WAITING' });
             }
           };
         }

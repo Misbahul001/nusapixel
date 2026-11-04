@@ -9,6 +9,15 @@
   ],
   "headers": [
     {
+      "source": "/(sw.js|game|game.html|index.html|beranda.html|manifest.json)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {

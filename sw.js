@@ -3,7 +3,7 @@
 // Versi cache bernomor: ubah versi saat merilis pembaruan shell
 // ==============================================================================
 
-const CACHE_NAME = 'nusapixel-shell-v24';
+const CACHE_NAME = 'nusapixel-shell-v25';
 
 // Aset app shell yang di-cache saat instalasi
 const APP_SHELL = [
@@ -22,17 +22,17 @@ const APP_SHELL = [
 
 // Instalasi: unduh dan simpan aset app shell ke cache
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // addAll dengan toleransi kegagalan CDN opsional
       return Promise.allSettled(
         APP_SHELL.map(url => cache.add(url).catch(err => console.warn('[SW] Cache miss:', url, err)))
       );
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Aktivasi: bersihkan versi cache lama
+// Aktivasi: bersihkan versi cache lama seketika dan klaim semua klien
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -48,9 +48,10 @@ self.addEventListener('activate', event => {
 });
 
 // Strategi Pengambilan (Fetch):
-// - API Supabase: NETWORK ONLY (tidak pernah di-cache untuk menjamin integritas realtime & RPC)
-// - Tile Peta OpenStreetMap: NETWORK ONLY (mematuhi OSM Tile Policy - tidak melakukan caching massal)
-// - App Shell & Aset Statis: Cache First / Stale While Revalidate
+// - API Supabase: NETWORK ONLY
+// - Tile Peta OpenStreetMap: NETWORK ONLY
+// - Dokumen HTML (Game, Beranda, dll): NETWORK FIRST (Selalu ambil kode terbaru dari server!)
+// - Aset Statis (CSS, Ikon, Library): Stale-While-Revalidate
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
@@ -64,28 +65,40 @@ self.addEventListener('fetch', event => {
   if (url.hostname.includes('tile.openstreetmap.org')) {
     event.respondWith(
       fetch(req).catch(() => {
-        // Saat offline, kembalikan response kosong agar peta tidak melempar error mentah
         return new Response('', { status: 204, statusText: 'Offline Tile' });
       })
     );
     return;
   }
 
-  // 3. Permintaan Navigasi HTML: Cache First dengan Network Fallback
-  if (req.mode === 'navigate') {
+  // 3. Dokumen HTML: NETWORK FIRST (menjamin pembaruan game langsung aktif tanpa nyangkut di cache)
+  const isHtml = req.mode === 'navigate' ||
+                 (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) ||
+                 url.pathname.endsWith('.html') ||
+                 url.pathname === '/game' ||
+                 url.pathname === '/play';
+
+  if (isHtml) {
     event.respondWith(
-      fetch(req).catch(() => {
-        return caches.match('./index.html') || caches.match('./');
-      })
+      fetch(req)
+        .then(res => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(async () => {
+          return (await caches.match(req)) || (await caches.match('./game.html')) || (await caches.match('./index.html'));
+        })
     );
     return;
   }
 
-  // 4. Aset App Shell lainnya (CSS, JS, Font, Ikon)
+  // 4. Aset App Shell lainnya (CSS, JS Library, Font, Ikon)
   event.respondWith(
     caches.match(req).then(cachedResponse => {
       if (cachedResponse) {
-        // Perbarui di latar belakang jika online (stale-while-revalidate)
         fetch(req).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then(cache => cache.put(req, networkResponse));
@@ -98,9 +111,9 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// Komunikasi dengan klien (misal: skipWaiting manual)
+// Komunikasi dengan klien (skipWaiting instan saat ada update)
 self.addEventListener('message', event => {
-  if (event.data && event.data.action === 'SKIP_WAITING') {
+  if (event.data && (event.data.action === 'SKIP_WAITING' || event.data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
   }
 });
