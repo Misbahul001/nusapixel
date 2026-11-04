@@ -4784,7 +4784,21 @@ function wireAuthButtons() {
     Sfx.click();
     if (SB_URL.includes('PROJECT-ID')) return toast('Mode Demo: Sambungkan Supabase untuk fitur akun.');
     const r = await sb.auth.linkIdentity({provider: 'google', options: {redirectTo: back}});
-    if (r.error) toast(r.error.message);
+    if (r.error) {
+      if (r.error.message && r.error.message.toLowerCase().includes('manual linking is disabled')) {
+        const proceed = await uiConfirm({
+          title: 'Masuk Akun Google',
+          message: 'Fitur tautkan instan belum diaktifkan di server. Masuk langsung dengan akun Google Anda?',
+          confirmText: 'Lanjutkan Masuk Google',
+          cancelText: 'Batal'
+        });
+        if (proceed) {
+          await sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: back}});
+        }
+      } else {
+        toast(r.error.message);
+      }
+    }
   };
   if ($('em')) $('em').onclick = async () => {
     Sfx.click();
