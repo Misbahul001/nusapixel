@@ -9,13 +9,16 @@
     { "source": "/article", "destination": "/article.html" },
     { "source": "/baca", "destination": "/article.html" },
     { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/monitor", "destination": "/dashboard.html" },
+    { "source": "/radar", "destination": "/dashboard.html" },
     { "source": "/promo", "destination": "/promo.html" },
     { "source": "/promo-long", "destination": "/promo_long.html" },
     { "source": "/promo2", "destination": "/promo_long.html" }
   ],
   "headers": [
     {
-      "source": "/(sw.js|game|game.html|index.html|beranda.html|manifest.json)",
+      "source": "/(sw.js|game|game.html|index.html|beranda.html|manifest.json|dashboard.html)",
       "headers": [
         {
           "key": "Cache-Control",

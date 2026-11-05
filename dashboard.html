@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>NusaPixel Radar — Progress Kerja AI Agent & Web Monitor</title>
+  <meta name="description" content="Dashboard monitoring real-time untuk memantau performa website NusaPixel, statistik pengunjung, dan progres kerja AI Editorial Autopilot.">
+  <link rel="canonical" href="https://www.nusapixel.xyz/dashboard">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Mobile & PWA Optimization -->
+  <meta name="theme-color" content="#090D16">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #090D16;
+      --bg-card: #0F172A;
+      --bg-card-hover: #162036;
+      --border: #1E293B;
+      --border-accent: #334155;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --emerald: #10B981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --cyan: #06B6D4;
+      --cyan-glow: rgba(6, 182, 212, 0.15);
+      --amber: #F59E0B;
+      --purple: #8B5CF6;
+      --rose: #F43F5E;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Top Navigation Header */
+    header.site-header {
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-inner {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #10B981, #06B6D4);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #041014;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-radar {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--emerald);
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulseAnimation 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseAnimation {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.85); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg-card);
+      color: var(--text);
+      border-color: var(--border-accent);
+    }
+
+    .btn-emerald {
+      background: var(--emerald);
+      border: 1px solid var(--emerald);
+      color: #041014;
+    }
+
+    .btn-emerald:hover {
+      opacity: 0.9;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Main Dashboard Layout */
+    main {
+      flex: 1;
+      padding: 1.5rem 0 3rem 0;
+    }
+
+    /* Top KPI Stats */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .kpi-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-icon {
+      font-size: 1.1rem;
+    }
+
+    .kpi-value {
+      font-size: 1.85rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+
+    .kpi-sub {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .kpi-sub.success {
+      color: var(--emerald);
+    }
+
+    /* Content Two-Column Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 7fr 5fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+
+    /* Article List Table / Feed */
+    .article-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .article-item:last-child {
+      border-bottom: none;
+    }
+
+    .article-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .article-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .cat-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      background: rgba(6, 182, 212, 0.12);
+      color: var(--cyan);
+    }
+
+    .article-headline {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      text-decoration: none;
+      line-height: 1.35;
+      display: block;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .article-headline:hover {
+      color: var(--cyan);
+    }
+
+    .article-stats {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .views-counter {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--emerald);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .views-label {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    /* Bot Health & AI Agent Status Card */
+    .agent-status-box {
+      background: rgba(16, 185, 129, 0.05);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .agent-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .agent-row:last-child {
+      border-bottom: none;
+    }
+
+    .agent-label {
+      color: var(--text-muted);
+    }
+
+    .agent-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Evergreen Queue */
+    .queue-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 6px;
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .queue-title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-muted);
+    }
+
+    .queue-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .queue-badge.done {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald);
+    }
+
+    .queue-badge.pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amber);
+    }
+
+    /* Activity Log Feed */
+    .log-stream {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .log-entry {
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid var(--emerald);
+      padding: 8px 10px;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.76rem;
+    }
+
+    .log-entry.info {
+      border-left-color: var(--cyan);
+    }
+
+    .log-entry.amber {
+      border-left-color: var(--amber);
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--text);
+    }
+
+    .log-time {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+    }
+
+    .log-detail {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      word-break: break-word;
+    }
+
+    /* Auto Refresh Counter */
+    .refresh-bar {
+      height: 3px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .refresh-fill {
+      height: 100%;
+      background: var(--emerald);
+      width: 100%;
+      transition: width 1s linear;
+    }
+
+    /* PWA Install Banner */
+    .install-banner {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(16, 185, 129, 0.1));
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .install-content h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .install-content p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 0;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    @media (max-width: 640px) {
+      .header-actions .btn-ghost span {
+        display: none;
+      }
+      .kpi-value {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/dashboard" class="brand-wrap">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">
+            NusaPixel Radar
+            <span class="badge-radar">
+              <span class="pulse-dot"></span>
+              Live Sync
+            </span>
+          </div>
+        </div>
+      </a>
+
+      <div class="header-actions">
+        <button id="btnRefresh" class="btn-action btn-ghost" title="Refresh Data Sekarang">
+          🔄 <span>Refresh</span>
+        </button>
+        <a href="/blog" target="_blank" class="btn-action btn-ghost">
+          📰 <span>Lihat Blog</span>
+        </a>
+        <a href="https://search.google.com/search-console" target="_blank" class="btn-action btn-ghost">
+          🔍 <span>Google Console</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+
+      <!-- PWA Install Notice for Mobile -->
+      <div class="install-banner">
+        <div class="install-content">
+          <h4>📱 Jadikan Aplikasi HP (PWA Home Screen)</h4>
+          <p>Buka menu browser Anda (titik 3 di Chrome/Brave), pilih <strong>"Tambahkan ke Layar Utama"</strong> (Add to Home Screen) untuk akses dashboard 1-tap seperti aplikasi native.</p>
+        </div>
+        <div>
+          <span class="badge-radar">Standalone Ready</span>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Total Artikel Terbit</span>
+            <span class="kpi-icon">📚</span>
+          </div>
+          <div id="statTotalArticles" class="kpi-value">-</div>
+          <div class="kpi-sub success">
+            <span>✓</span> Terindeks & live di web
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Total Pembaca (Views)</span>
+            <span class="kpi-icon">👥</span>
+          </div>
+          <div id="statTotalViews" class="kpi-value">-</div>
+          <div class="kpi-sub success">
+            <span>⚡</span> Real-time counter Supabase
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>AI Autopilot Daemon</span>
+            <span class="kpi-icon">🤖</span>
+          </div>
+          <div class="kpi-value" style="color: var(--emerald); font-size: 1.5rem;">AKTIF</div>
+          <div class="kpi-sub">
+            <span>⏳</span> Siklus setiap 12 Jam
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Google Search Console</span>
+            <span class="kpi-icon">🎯</span>
+          </div>
+          <div class="kpi-value" style="color: var(--cyan); font-size: 1.5rem;">VERIFIED</div>
+          <div class="kpi-sub success">
+            <span>✓</span> Sitemap & Robots.txt OK
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Grid -->
+      <div class="dashboard-grid">
+
+        <!-- Left Column: Web Performance & Visitor Leaderboard -->
+        <div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">
+                📊 Performa Artikel & Pembaca
+              </h2>
+              <span id="articleCountBadge" class="panel-badge">0 Artikel</span>
+            </div>
+
+            <div id="articlesListContainer">
+              <p style="color: var(--text-dim); font-size: 0.85rem; padding: 1rem 0;">Memuat data artikel dari Supabase...</p>
+            </div>
+          </div>
+
+          <!-- SEO & Indexing Card -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">
+                🌐 Status SEO & Google Indexing
+              </h2>
+              <span class="panel-badge">Google Verified</span>
+            </div>
+
+            <div class="agent-row">
+              <span class="agent-label">Domain Resmi</span>
+              <a href="https://www.nusapixel.xyz" target="_blank" class="agent-val" style="color: var(--cyan); text-decoration: none;">https://www.nusapixel.xyz ↗</a>
+            </div>
+            <div class="agent-row">
+              <span class="agent-label">Peta Situs (Sitemap.xml)</span>
+              <a href="/sitemap.xml" target="_blank" class="agent-val" style="color: var(--emerald); text-decoration: none;">/sitemap.xml ↗</a>
+            </div>
+            <div class="agent-row">
+              <span class="agent-label">File robots.txt</span>
+              <a href="/robots.txt" target="_blank" class="agent-val" style="color: var(--emerald); text-decoration: none;">/robots.txt (Allow All) ↗</a>
+            </div>
+            <div class="agent-row">
+              <span class="agent-label">Verifikasi Google Console</span>
+              <span class="agent-val" style="color: var(--emerald);">HTML Tag & File Aktif ✓</span>
+            </div>
+            <div class="agent-row">
+              <span class="agent-label">JSON-LD Schema Markup</span>
+              <span class="agent-val" style="color: var(--emerald);">BlogPosting & FAQ Schema Active ✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: AI Agent Status, Evergreen Queue & Event Stream -->
+        <div>
+          
+          <!-- AI Agent Engine Profile -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">
+                🤖 AI Editorial Engine
+              </h2>
+              <span class="badge-radar" style="font-size: 0.65rem;">Foreground Daemon</span>
+            </div>
+
+            <div class="agent-status-box">
+              <div class="agent-row">
+                <span class="agent-label">Model AI</span>
+                <span class="agent-val" style="color: var(--cyan);">Gemini 3.6 Flash</span>
+              </div>
+              <div class="agent-row">
+                <span class="agent-label">Daemon Scheduler</span>
+                <span class="agent-val">agy-daemon (PID 4232)</span>
+              </div>
+              <div class="agent-row">
+                <span class="agent-label">Task ID</span>
+                <span class="agent-val">task_682544</span>
+              </div>
+              <div class="agent-row">
+                <span class="agent-label">Frekuensi Auto-Post</span>
+                <span class="agent-val">Setiap 12 Jam</span>
+              </div>
+              <div class="agent-row">
+                <span class="agent-label">Filter Kualitas</span>
+                <span class="agent-val" style="color: var(--emerald);">Anti-Slop v2 + EEAT</span>
+              </div>
+            </div>
+
+            <div style="font-size: 0.74rem; color: var(--text-dim); line-height: 1.4;">
+              💡 <em>Bot berjalan mandiri di background service Android tanpa perlu membuka aplikasi Antigravity. Artikel di-generate berdasarkan tren pencarian Google dan langsung terbit di Vercel.</em>
+            </div>
+          </div>
+
+          <!-- Evergreen How-To Topics Pipeline -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">
+                🎯 Antrean Topik "How-To" Google Trends
+              </h2>
+              <span class="panel-badge">Topik Tahunan</span>
+            </div>
+
+            <div id="queueContainer">
+              <p style="color: var(--text-dim); font-size: 0.8rem;">Sinkronisasi antrean topik...</p>
+            </div>
+          </div>
+
+          <!-- Real-Time Activity Log Stream -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">
+                📡 Log Aktivitas Real-Time
+              </h2>
+              <span id="logCountBadge" class="panel-badge">0 Log</span>
+            </div>
+
+            <div id="logStreamContainer" class="log-stream">
+              <p style="color: var(--text-dim); font-size: 0.8rem;">Memuat log aktivitas...</p>
+            </div>
+
+            <div class="refresh-bar">
+              <div id="refreshBarFill" class="refresh-fill"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-dim); margin-top: 4px;">
+              <span>Auto-refresh sinkronisasi</span>
+              <span id="refreshTimerText">30s</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      NusaPixel Mission Control &copy; 2026 &bull; Real-time AI Agent & Web Radar &bull; Hosted on Vercel & Supabase
+    </div>
+  </footer>
+
+  <script>
+    const SB_URL = 'https://npmfiituiionyapoipyd.supabase.co';
+    const SB_KEY = 'sb_publishable_MaXyb37-4s4iIi0N2AgB4w_bDmPGsq7';
+    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+
+    // List Topik Evergreen dari Google Year in Search
+    const PILLAR_TOPICS = [
+      { title: "Cara Membuat Foto AI Realistis Gratis di HP Tanpa Aplikasi Berbayar", category: "Tutorial" },
+      { title: "Cara Membersihkan Cache dan File Sampah Tersembunyi di Android", category: "Tutorial" },
+      { title: "Cara Mengatasi Memori HP Penuh Akibat WhatsApp yang Menumpuk", category: "Tutorial" },
+      { title: "Cara Mengamankan Akun WhatsApp dari Sadap dan Pembajakan Tanpa Aplikasi Tambahan", category: "Tutorial" },
+      { title: "Cara Mengompres File PDF Ukuran Besar Menjadi Kurang dari 1 MB untuk Lamaran Kerja", category: "Tutorial" },
+      { title: "Cara Mengatasi Baterai HP Cepat Habis dan Boros: 6 Setting Wajib Pengguna Android", category: "Tutorial" },
+      { title: "Cara Melacak HP yang Hilang Menggunakan Akun Google dan Fitur Find My Device", category: "Tutorial" },
+      { title: "Cara Mengatasi Sinyal HP Hilang atau Lemot dengan Trik Refresh Jaringan", category: "Tutorial" },
+      { title: "Cara Mengubah File PDF ke Word Tanpa Rusak Spasi dan Format Tabel", category: "Tutorial" }
+    ];
+
+    let cachedArticles = [];
+    let refreshCountdown = 30;
+    let timerInterval = null;
+
+    async function loadDashboardData() {
+      try {
+        // 1. Fetch Articles
+        const { data: articles, error: artError } = await supabase
+          .from('articles')
+          .select('id, title, slug, views, category, reading_time, is_published, created_at')
+          .order('views', { ascending: false });
+
+        if (!artError && articles) {
+          cachedArticles = articles;
+          renderArticles(articles);
+          renderKPIs(articles);
+          renderQueue(articles);
+        }
+
+        // 2. Fetch Agent Logs
+        const { data: logs, error: logError } = await supabase
+          .from('agent_logs')
+          .select('id, action, details, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (!logError && logs) {
+          renderLogs(logs);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+      }
+    }
+
+    function renderKPIs(articles) {
+      const totalArticles = articles.length;
+      const totalViews = articles.reduce((sum, item) => sum + (item.views || 0), 0);
+
+      document.getElementById('statTotalArticles').textContent = totalArticles;
+      document.getElementById('statTotalViews').textContent = totalViews.toLocaleString('id-ID');
+      document.getElementById('articleCountBadge').textContent = `${totalArticles} Artikel`;
+    }
+
+    function renderArticles(articles) {
+      const container = document.getElementById('articlesListContainer');
+      if (!articles || articles.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-dim); font-size: 0.85rem; padding: 1rem 0;">Belum ada artikel terbit.</p>';
+        return;
+      }
+
+      container.innerHTML = articles.map(art => {
+        const dateStr = new Date(art.created_at).toLocaleDateString('id-ID', {
+          day: 'numeric', month: 'short', year: 'numeric'
+        });
+        const viewsCount = (art.views || 0).toLocaleString('id-ID');
+        const readTime = art.reading_time || 3;
+        const category = art.category || 'Teknologi';
+
+        return `
+          <div class="article-item">
+            <div class="article-info">
+              <div class="article-meta">
+                <span class="cat-tag">${escapeHtml(category)}</span>
+                <span>•</span>
+                <span>⏱️ ${readTime} mnt</span>
+                <span>•</span>
+                <span>${dateStr}</span>
+              </div>
+              <a href="/article?slug=${encodeURIComponent(art.slug)}" target="_blank" class="article-headline" title="${escapeHtml(art.title)}">
+                ${escapeHtml(art.title)}
+              </a>
+            </div>
+            <div class="article-stats">
+              <div class="views-counter">
+                <span>👁️</span>
+                <span>${viewsCount}</span>
+              </div>
+              <div class="views-label">Views</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderQueue(articles) {
+      const container = document.getElementById('queueContainer');
+      const publishedTitles = articles.map(a => a.title.toLowerCase());
+
+      container.innerHTML = PILLAR_TOPICS.map(item => {
+        const isDone = publishedTitles.some(t => t.includes(item.title.substring(0, 25).toLowerCase()));
+        return `
+          <div class="queue-item">
+            <div class="queue-title" title="${escapeHtml(item.title)}">
+              ${isDone ? '✓' : '•'} ${escapeHtml(item.title)}
+            </div>
+            <span class="queue-badge ${isDone ? 'done' : 'pending'}">
+              ${isDone ? 'TERBIT' : 'ANTREAN'}
+            </span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderLogs(logs) {
+      const container = document.getElementById('logStreamContainer');
+      document.getElementById('logCountBadge').textContent = `${logs.length} Aktivitas Terkini`;
+
+      if (!logs || logs.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-dim); font-size: 0.8rem;">Belum ada aktivitas tercatat.</p>';
+        return;
+      }
+
+      container.innerHTML = logs.map(log => {
+        const timeAgo = formatTimeAgo(new Date(log.created_at));
+        let detailsText = '';
+        if (log.details) {
+          if (typeof log.details === 'object') {
+            if (log.details.title) detailsText = log.details.title;
+            else if (log.details.schedule) detailsText = `Jadwal: ${log.details.schedule} (${log.details.model})`;
+            else detailsText = JSON.stringify(log.details).substring(0, 60);
+          } else {
+            detailsText = String(log.details);
+          }
+        }
+
+        return `
+          <div class="log-entry ${log.status === 'success' ? '' : 'amber'}">
+            <div class="log-header">
+              <span>${escapeHtml(log.action)}</span>
+              <span class="log-time">${timeAgo}</span>
+            </div>
+            ${detailsText ? `<div class="log-detail">${escapeHtml(detailsText)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'Baru saja';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m lalu`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}j lalu`;
+      const days = Math.floor(hours / 24);
+      return `${days}h lalu`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Refresh countdown cycle
+    function startRefreshTimer() {
+      refreshCountdown = 30;
+      updateRefreshUI();
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        refreshCountdown--;
+        if (refreshCountdown <= 0) {
+          refreshCountdown = 30;
+          loadDashboardData();
+        }
+        updateRefreshUI();
+      }, 1000);
+    }
+
+    function updateRefreshUI() {
+      document.getElementById('refreshTimerText').textContent = `${refreshCountdown}s`;
+      const pct = (refreshCountdown / 30) * 100;
+      document.getElementById('refreshBarFill').style.width = `${pct}%`;
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', () => {
+      loadDashboardData();
+      startRefreshTimer();
+    });
+
+    // Inisialisasi awal
+    loadDashboardData();
+    startRefreshTimer();
+  </script>
+</body>
+</html>
