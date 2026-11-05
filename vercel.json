@@ -5,7 +5,8 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/game", "destination": "/game.html" },
-    { "source": "/play", "destination": "/game.html" }
+    { "source": "/play", "destination": "/game.html" },
+    { "source": "/promo", "destination": "/promo.html" }
   ],
   "headers": [
     {
