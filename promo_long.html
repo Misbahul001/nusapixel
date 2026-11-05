@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NusaPixel - 2-Minute Motion Graphic Studio</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900;1000&family=JetBrains+Mono:wght@700;800&display=swap');
+    body {
+      font-family: 'Nunito', -apple-system, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .canvas-box {
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 35px rgba(59,130,246,0.3);
+      transition: aspect-ratio 0.3s ease;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-start py-6 px-4">
+
+  <!-- Header & Toolbar -->
+  <header class="w-full max-w-4xl flex flex-wrap items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-800">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-blue-500/30">
+        N
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-black tracking-tight leading-tight">Motion Graphic Promo Studio</h1>
+          <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
+            Versi Panjang (120 Detik)
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">Sinkronisasi Audio ElevenLabs &bull; Ekspor Video HD 60 FPS</p>
+      </div>
+    </div>
+
+    <!-- Aspect Ratio Toggle -->
+    <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+      <button id="btn-aspect-916" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow transition-all">
+        📱 9:16 (TikTok/Reels)
+      </button>
+      <button id="btn-aspect-169" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">
+        🖥️ 16:9 (YouTube)
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- Video Player Preview (Left / Center) -->
+    <div class="lg:col-span-7 flex flex-col items-center">
+      <div id="canvas-wrapper" class="relative w-full max-w-[340px] canvas-box rounded-2xl overflow-hidden border-2 border-slate-800 bg-black flex items-center justify-center" style="aspect-ratio: 9/16;">
+        <canvas id="motion-canvas" width="1080" height="1920" class="w-full h-full object-contain"></canvas>
+
+        <!-- Recording Indicator -->
+        <div id="recording-badge" class="absolute top-4 left-4 bg-red-600/90 text-white text-xs font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xl animate-pulse backdrop-blur-md" style="display:none">
+          <span class="w-2.5 h-2.5 rounded-full bg-white"></span>
+          <span>MEREKAM VIDEO HD (1080p)...</span>
+        </div>
+
+        <!-- Audio Indicator -->
+        <div id="vo-indicator" class="absolute top-4 right-4 bg-emerald-600/90 text-white text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md" style="display:none">
+          <span>🎙️ VO ELEVENLABS AKTIF</span>
+        </div>
+
+        <!-- Play/Pause Overlay -->
+        <button id="btn-toggle-play" class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity duration-200">
+          <div class="w-16 h-16 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-2xl backdrop-blur-sm transform active:scale-95 transition-transform">
+            <svg id="play-icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        </button>
+      </div>
+
+      <!-- Timeline & Progress -->
+      <div class="w-full max-w-[340px] mt-4">
+        <div class="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
+          <span id="time-current" class="mono text-white">00:00</span>
+          <span class="text-blue-400 font-black text-center truncate max-w-[190px]" id="scene-label">Act 1: Hook & Premis</span>
+          <span class="mono">02:00</span>
+        </div>
+        <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden cursor-pointer relative" id="progress-bar-wrap">
+          <div id="progress-bar" class="h-full bg-gradient-to-r from-blue-500 via-emerald-400 to-amber-400 rounded-full w-0 transition-all duration-75"></div>
+        </div>
+      </div>
+
+      <!-- Quick Playback Controls -->
+      <div class="w-full max-w-[340px] grid grid-cols-3 gap-2 mt-3">
+        <button id="btn-play-pause-txt" class="py-2 px-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5">
+          <span id="play-btn-label">⏸️ Pause</span>
+        </button>
+        <button id="btn-restart" class="py-2 px-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5">
+          🔄 Ulang
+        </button>
+        <button id="btn-sound-toggle" class="py-2 px-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5">
+          <span id="sound-label">🔊 BGM: On</span>
+        </button>
+      </div>
+
+      <!-- Main Export Button -->
+      <div class="w-full max-w-[340px] mt-3">
+        <button id="btn-record-download" class="w-full py-3.5 px-4 rounded-xl font-black text-sm bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white shadow-xl shadow-red-500/25 flex items-center justify-center gap-2 transform active:scale-98 transition-all">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="record-btn-text">Render & Unduh Video HD (2 Menit)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Column: Audio & Script Controls -->
+    <div class="lg:col-span-5 flex flex-col gap-4">
+      
+      <!-- Audio Synchronization Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-black text-white flex items-center gap-2">
+            <span>🎙️</span> Sinkronisasi Voiceover
+          </h2>
+          <span id="audio-status-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+            Menggunakan BGM Synth
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">
+          Upload file audio MP3/WAV hasil render dari <b>ElevenLabs</b> untuk men-dubbing video ini secara otomatis.
+        </p>
+
+        <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-3 cursor-pointer bg-slate-950/60 transition-colors">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-400 mb-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span class="text-xs font-bold text-slate-200" id="audio-filename">Pilih File Suara ElevenLabs (.mp3/.wav)</span>
+          <span class="text-[10px] text-slate-500">Otomatis sinkron dengan timeline 120 detik</span>
+          <input type="file" id="vo-file-input" accept="audio/*" class="hidden">
+        </label>
+
+        <div id="audio-controls-row" class="mt-3 flex items-center justify-between text-xs" style="display:none">
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400">Volume Suara:</span>
+            <input type="range" id="vo-volume" min="0" max="1" step="0.05" value="0.9" class="w-24 accent-blue-500">
+          </div>
+          <button id="btn-remove-vo" class="text-xs text-red-400 hover:text-red-300 font-bold">
+            Hapus Audio
+          </button>
+        </div>
+      </div>
+
+      <!-- Scenes Overview Jump Buttons -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-sm font-black text-white flex items-center gap-2 mb-2">
+          <span>🎬</span> Lompat ke Babak (120 Detik)
+        </h2>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="seekTo(0)" class="p-2 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-left border border-slate-700 hover:border-blue-500 transition-colors">
+            <div class="font-black text-blue-400">Act 1 (0:00 - 0:20)</div>
+            <div class="text-[11px] text-slate-300 truncate">Hook & Peta Kanvas</div>
+          </button>
+          <button onclick="seekTo(20)" class="p-2 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-left border border-slate-700 hover:border-blue-500 transition-colors">
+            <div class="font-black text-emerald-400">Act 2 (0:20 - 0:40)</div>
+            <div class="text-[11px] text-slate-300 truncate">Cara Main & Grid</div>
+          </button>
+          <button onclick="seekTo(40)" class="p-2 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-left border border-slate-700 hover:border-blue-500 transition-colors">
+            <div class="font-black text-amber-400">Act 3 (0:40 - 1:00)</div>
+            <div class="text-[11px] text-slate-300 truncate">Gotong Royong Live</div>
+          </button>
+          <button onclick="seekTo(60)" class="p-2 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-left border border-slate-700 hover:border-blue-500 transition-colors">
+            <div class="font-black text-purple-400">Act 4 (1:00 - 1:24)</div>
+            <div class="text-[11px] text-slate-300 truncate">Fitur Sakti (Gembok/TL)</div>
+          </button>
+          <button onclick="seekTo(84)" class="p-2 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-left border border-slate-700 hover:border-blue-500 transition-colors">
+            <div class="font-black text-rose-400">Act 5 (1:24 - 1:45)</div>
+            <div class="text-[11px] text-slate-300 truncate">Perang Wilayah Daerah</div>
+          </button>
+          <button onclick="seekTo(105)" class="p-2 rounded-lg bg-slate-800 hover:bg-blue-600/30 text-left border border-slate-700 hover:border-blue-500 transition-colors">
+            <div class="font-black text-cyan-400">Act 6 (1:45 - 2:00)</div>
+            <div class="text-[11px] text-slate-300 truncate">Outro & CTA nusapixel</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- ElevenLabs Copy-Paste Script Preview Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-black text-white flex items-center gap-2">
+            <span>📝</span> Naskah Voiceover ElevenLabs
+          </h2>
+          <button id="btn-copy-script" class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-colors flex items-center gap-1">
+            <span>Salin Naskah</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-2">
+          Naskah bahasa Indonesia dioptimalkan untuk model <i>Eleven Multilingual v2</i> (~120 detik).
+        </p>
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono max-h-48 overflow-y-auto custom-scrollbar leading-relaxed" id="script-full-text">
+Pernahkah kamu membayangkan, bagaimana jadinya jika seluruh wilayah Indonesia... dari Sabang sampai Merauke... diubah menjadi satu kanvas seni piksel raksasa tanpa batas?
+
+Perkenalkan NusaPixel! Dunia tempat setiap jengkal pulau dan kota nyata bisa kamu torehkan warna bersama jutaan pemain lainnya secara realtime.
+
+Caranya sangat mudah. Cukup buka lewat browser di handphone kamu, jelajahi peta nusantara, pilih warna dari palet yang tersedia, dan letakkan piksel pertamamu. Setiap satu piksel yang kamu pasang, langsung tersimpan abadi dan dapat disaksikan oleh seluruh orang di dunia saat itu juga!
+
+Tapi petualangan yang sesungguhnya baru saja dimulai! Ini bukan sekadar menggambar sendirian... ini adalah panggung gotong royong digital. Bersama teman, komunitas, atau aliansimu, kamu bisa mendirikan mural megah burung Garuda, panorama Candi Borobudur, Monas, hingga karya anime dan seni modern favoritmu!
+
+Takut karyamu dirusak oleh pemain lain? Tenang! Gunakan fitur Gembok Emas untuk melindungi wilayah mahakaryamu. Kamu juga bisa mengunggah foto langsung dari galeri handphone untuk diubah otomatis menjadi sketsa piksel dengan fitur Template Gambar. Dan saksikan kembali perjalanan sejarah terciptanya lukisanmu dari awal lewat fitur Time-Lapse interaktif!
+
+Bela kebanggaan daerahmu! Siapakah provinsi dengan komunitas terkuat di nusantara? Jawa Barat, DKI Jakarta, Jawa Timur, Sumatera Utara, Bali, atau Papua? Buktikan kekompakan daerahmu dan puncaki Leaderboard Nusantara sekarang juga!
+
+Semua ini 100% gratis, tanpa perlu unduh aplikasi apa pun, dan langsung bisa dimainkan dengan satu klik login Google.
+
+Tunggu apa lagi? Kunjungi nusapixel.xyz sekarang! Warnai tanah airmu, dan ukir jejak sejarahmu di kanvas Nusantara!
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // ==============================================================================
+    // NusaPixel 120-Second Dynamic Motion Graphic Engine
+    // ==============================================================================
+    const canvas = document.getElementById('motion-canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrap = document.getElementById('canvas-wrapper');
+
+    let currentAspectRatio = '9:16';
+    let baseWidth = 1080;
+    let baseHeight = 1920;
+
+    const TOTAL_DURATION_SEC = 120;
+    const TOTAL_MS = TOTAL_DURATION_SEC * 1000;
+
+    let startTime = null;
+    let isPlaying = true;
+    let isRecording = false;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    // Audio states
+    let audioContext = null;
+    let audioMuted = false;
+    let audioDest = null;
+    let voAudio = null;
+    let voSourceNode = null;
+    let voGainNode = null;
+
+    // Palette Colors
+    const COLORS = ['#000000','#ffffff','#6d4c41','#e53935','#fb8c00','#fdd835','#7cb342','#2e7d32','#00acc1','#1e88e5','#8e24aa','#d81b60'];
+
+    // Web Audio Synthesizer
+    function initAudio() {
+      if (!audioContext) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AC();
+        audioDest = audioContext.createMediaStreamDestination();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    }
+
+    function playNote(freq, type = 'square', duration = 0.1, gainVal = 0.12) {
+      if (audioMuted || !audioContext) return;
+      try {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+        gain.gain.setValueAtTime(gainVal, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        if (audioDest) gain.connect(audioDest);
+
+        osc.start();
+        osc.stop(audioContext.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // BGM Beat Sequencer
+    let lastBeatIdx = -1;
+    function updateBGM(timeMs) {
+      if (!isPlaying || audioMuted) return;
+      const bpm = 128;
+      const beatLen = 60000 / bpm / 2; // eighth notes
+      const beatIdx = Math.floor(timeMs / beatLen);
+
+      if (beatIdx !== lastBeatIdx) {
+        lastBeatIdx = beatIdx;
+        
+        // Dynamic chord progressions through 6 acts
+        const sec = timeMs / 1000;
+        let scaleFreqs = [261.63, 329.63, 392.00, 523.25]; // C maj
+        if (sec >= 40 && sec < 84) {
+          scaleFreqs = [293.66, 369.99, 440.00, 587.33]; // D maj / upbeat
+        } else if (sec >= 84 && sec < 105) {
+          scaleFreqs = [329.63, 392.00, 493.88, 659.25]; // E min / intense battle
+        } else if (sec >= 105) {
+          scaleFreqs = [349.23, 440.00, 523.25, 698.46]; // F maj / triumphant outro
+        }
+
+        const freq = scaleFreqs[beatIdx % scaleFreqs.length];
+
+        // Bass kick & retro snare
+        if (beatIdx % 4 === 0) {
+          playNote(90, 'triangle', 0.15, 0.2); // kick
+        } else if (beatIdx % 4 === 2) {
+          playNote(freq * 1.5, 'square', 0.08, 0.06); // retro hi-hat/arpeggio
+        }
+
+        // Scene transition sound sting
+        if (beatIdx % 16 === 0) {
+          playNote(523.25, 'sine', 0.25, 0.15);
+        }
+      }
+    }
+
+    // Archipelago Map Nodes (Scaled coordinates)
+    const archipelago = [
+      { name: 'Sumatra', x: 200, y: 720, w: 220, h: 420 },
+      { name: 'Jawa', x: 420, y: 1140, w: 340, h: 100 },
+      { name: 'Kalimantan', x: 460, y: 680, w: 280, h: 320 },
+      { name: 'Sulawesi', x: 720, y: 760, w: 180, h: 300 },
+      { name: 'Bali-NTT', x: 720, y: 1200, w: 200, h: 60 },
+      { name: 'Papua', x: 900, y: 880, w: 200, h: 260 }
+    ];
+
+    // Cursors array
+    const cursors = [
+      { name: 'Siti_Jkt', x: 450, y: 1150, tx: 500, ty: 1120, col: '#10b981' },
+      { name: 'Garuda_ID', x: 550, y: 920, tx: 600, ty: 880, col: '#3b82f6' },
+      { name: 'Rian_Bdg', x: 480, y: 1170, tx: 520, ty: 1140, col: '#f59e0b' },
+      { name: 'Bayu_Sby', x: 620, y: 1160, tx: 660, ty: 1150, col: '#ec4899' },
+      { name: 'Mega_Mks', x: 740, y: 920, tx: 760, ty: 890, col: '#8b5cf6' },
+      { name: 'Papua_Pro', x: 920, y: 960, tx: 950, ty: 940, col: '#06b6d4' }
+    ];
+
+    // Confetti particles
+    const particles = [];
+    for (let i = 0; i < 100; i++) {
+      particles.push({
+        x: Math.random() * 1080,
+        y: Math.random() * 1920,
+        size: Math.random() * 14 + 6,
+        vx: (Math.random() - 0.5) * 5,
+        vy: Math.random() * 6 + 3,
+        col: COLORS[Math.floor(Math.random() * COLORS.length)],
+        rot: Math.random() * Math.PI
+      });
+    }
+
+    // Helper functions
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function drawMiniArchipelago(ctx, scale = 1, pulse = 0) {
+      ctx.save();
+      ctx.scale(scale, scale);
+      
+      archipelago.forEach((isl, i) => {
+        const offset = Math.sin(pulse * 3 + i) * 8;
+        ctx.fillStyle = i % 2 === 0 ? '#10b981' : '#059669';
+        ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+        ctx.shadowBlur = 15;
+        
+        roundRect(ctx, isl.x - 540, isl.y - 960 + offset, isl.w, isl.h, 24);
+        ctx.fill();
+
+        // City lights dots
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(isl.x - 540 + isl.w * 0.3, isl.y - 960 + offset + isl.h * 0.4, 12, 12);
+        ctx.fillRect(isl.x - 540 + isl.w * 0.6, isl.y - 960 + offset + isl.h * 0.6, 10, 10);
+      });
+      ctx.restore();
+    }
+
+    // ==============================================================================
+    // MAIN RENDER LOOP (120 Detik Timeline)
+    // ==============================================================================
+    function renderFrame(timeMs) {
+      ctx.save();
+      ctx.clearRect(0, 0, baseWidth, baseHeight);
+
+      // 1. Dynamic Cinematic Background
+      const bgGrad = ctx.createLinearGradient(0, 0, baseWidth, baseHeight);
+      const sec = timeMs / 1000;
+
+      if (sec < 20) {
+        bgGrad.addColorStop(0, '#090514');
+        bgGrad.addColorStop(0.5, '#130c2d');
+        bgGrad.addColorStop(1, '#07040f');
+      } else if (sec < 40) {
+        bgGrad.addColorStop(0, '#061324');
+        bgGrad.addColorStop(0.5, '#0c2242');
+        bgGrad.addColorStop(1, '#050f1d');
+      } else if (sec < 60) {
+        bgGrad.addColorStop(0, '#041f17');
+        bgGrad.addColorStop(0.5, '#0a362a');
+        bgGrad.addColorStop(1, '#03140f');
+      } else if (sec < 84) {
+        bgGrad.addColorStop(0, '#1c0d29');
+        bgGrad.addColorStop(0.5, '#311648');
+        bgGrad.addColorStop(1, '#12071a');
+      } else if (sec < 105) {
+        bgGrad.addColorStop(0, '#260c0c');
+        bgGrad.addColorStop(0.5, '#441414');
+        bgGrad.addColorStop(1, '#1a0606');
+      } else {
+        bgGrad.addColorStop(0, '#0c1a2e');
+        bgGrad.addColorStop(0.5, '#193358');
+        bgGrad.addColorStop(1, '#091220');
+      }
+
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, baseWidth, baseHeight);
+
+      // Global Grid lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 2;
+      const step = currentAspectRatio === '9:16' ? 60 : 80;
+      for (let x = 0; x < baseWidth; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke();
+      }
+      for (let y = 0; y < baseHeight; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke();
+      }
+
+      // HUD Coordinate Tracker (Top Right)
+      ctx.fillStyle = '#64748b';
+      ctx.font = '700 24px monospace';
+      ctx.textAlign = 'right';
+      const fakeLat = (-6.2088 + Math.sin(sec * 0.5) * 0.02).toFixed(4);
+      const fakeLng = (106.8456 + Math.cos(sec * 0.5) * 0.02).toFixed(4);
+      ctx.fillText(`GPS [${fakeLat}, ${fakeLng}]`, baseWidth - 40, 60);
+
+      // =========================================================================
+      // SCENE 1: HOOK & NUSANTARA KANVAS (0.0s - 20.0s)
+      // "Pernahkah kamu membayangkan seluruh wilayah Indonesia jadi kanvas bersama?"
+      // =========================================================================
+      if (sec < 20.0) {
+        document.getElementById('scene-label').textContent = 'Act 1: Hook & Premis (0s - 20s)';
+        const p = Math.min(1, sec / 18);
+
+        // Voxel Radar Globe Pulsing
+        ctx.save();
+        ctx.translate(baseWidth / 2, baseHeight * 0.42);
+        const scale = 0.9 + Math.sin(sec * 2) * 0.04;
+        ctx.scale(scale, scale);
+
+        // Radar Scan Rings
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(0, 0, 360, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, 260, 0, Math.PI * 2); ctx.stroke();
+
+        // Rotating scanner line
+        ctx.save();
+        ctx.rotate(sec * 1.5);
+        const scanGrad = ctx.createLinearGradient(0, 0, 360, 0);
+        scanGrad.addColorStop(0, 'rgba(96, 165, 250, 0.4)');
+        scanGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = scanGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, 360, 0, Math.PI / 4);
+        ctx.fill();
+        ctx.restore();
+
+        // 3D Archipelago Map
+        drawMiniArchipelago(ctx, 1.0, sec);
+        ctx.restore();
+
+        // Kinetic Typography
+        ctx.textAlign = 'center';
+
+        // Badge Pill
+        ctx.fillStyle = '#ef4444';
+        roundRect(ctx, baseWidth / 2 - 200, baseHeight * 0.12, 400, 64, 32);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 28px Nunito';
+        ctx.fillText('🇮🇩 THE REALTIME PIXEL CANVAS', baseWidth / 2, baseHeight * 0.12 + 42);
+
+        // Big Main Titles
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 64px Nunito';
+        ctx.shadowColor = 'rgba(59, 130, 246, 0.8)';
+        ctx.shadowBlur = 25;
+        ctx.fillText('SELURUH INDONESIA', baseWidth / 2, baseHeight * 0.74);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '1000 74px Nunito';
+        ctx.shadowColor = 'rgba(56, 189, 248, 0.9)';
+        ctx.shadowBlur = 35;
+        ctx.fillText('JADI SATU KANVAS?!', baseWidth / 2, baseHeight * 0.74 + 85);
+        ctx.shadowBlur = 0;
+
+        // Subtitle Card
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        roundRect(ctx, 80, baseHeight * 0.84, baseWidth - 160, 140, 24);
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f1f5f9';
+        ctx.font = '800 32px Nunito';
+        ctx.fillText('"Bagaimana jadinya jika Sabang sampai Merauke', baseWidth / 2, baseHeight * 0.84 + 55);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 28px Nunito';
+        ctx.fillText('bisa kamu warnai piksel demi piksel?"', baseWidth / 2, baseHeight * 0.84 + 105);
+      }
+
+      // =========================================================================
+      // SCENE 2: CARA BERMAIN & ZOOM-IN GRID (20.0s - 40.0s)
+      // "Cukup buka browser HP, zoom ke kotamu, pilih warna, letakkan pixel!"
+      // =========================================================================
+      else if (sec < 40.0) {
+        document.getElementById('scene-label').textContent = 'Act 2: Cara Main & Grid (20s - 40s)';
+        const t2 = sec - 20.0;
+
+        // Map View Mockup
+        ctx.save();
+        ctx.translate(baseWidth / 2, baseHeight * 0.45);
+
+        // Zoom scale
+        const zoom = 1.0 + Math.min(2.5, t2 * 0.15);
+        ctx.scale(zoom, zoom);
+
+        // Grid cells
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-350, -350, 700, 700);
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        for (let gx = -350; gx <= 350; gx += 50) {
+          ctx.beginPath(); ctx.moveTo(gx, -350); ctx.lineTo(gx, 350); ctx.stroke();
+        }
+        for (let gy = -350; gy <= 350; gy += 50) {
+          ctx.beginPath(); ctx.moveTo(-350, gy); ctx.lineTo(350, gy); ctx.stroke();
+        }
+
+        // Existing Pixels on grid
+        const demoPixels = [
+          {x: -100, y: -50, c: '#e53935'}, {x: -50, y: -50, c: '#e53935'}, {x: 0, y: -50, c: '#ffffff'}, {x: 50, y: -50, c: '#ffffff'},
+          {x: -100, y: 0, c: '#e53935'}, {x: -50, y: 0, c: '#e53935'}, {x: 0, y: 0, c: '#ffffff'}, {x: 50, y: 0, c: '#ffffff'},
+          {x: -100, y: 50, c: '#1e88e5'}, {x: -50, y: 50, c: '#fdd835'}, {x: 0, y: 50, c: '#7cb342'}, {x: 50, y: 50, c: '#8e24aa'}
+        ];
+        demoPixels.forEach(dp => {
+          ctx.fillStyle = dp.c;
+          ctx.fillRect(dp.x, dp.y, 50, 50);
+        });
+
+        // Placing a new pixel animation with ripple
+        if (t2 > 3.0) {
+          const ripSize = ((t2 * 20) % 60);
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(100 - ripSize/2, 50 - ripSize/2, 50 + ripSize, 50 + ripSize);
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(100, 50, 50, 50);
+        }
+
+        // Tap Hand / Crosshair Target
+        const handX = 125 + Math.sin(t2 * 3) * 10;
+        const handY = 75 + Math.cos(t2 * 3) * 10;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(handX, handY, 30, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // UI Floating Palette at Bottom
+        ctx.save();
+        ctx.translate(baseWidth / 2 - 380, baseHeight * 0.72);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+        roundRect(ctx, 0, 0, 760, 100, 24);
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        COLORS.forEach((col, idx) => {
+          ctx.fillStyle = col;
+          const px = 25 + idx * 60;
+          ctx.beginPath();
+          ctx.arc(px + 20, 50, 22, 0, Math.PI * 2);
+          ctx.fill();
+          if (idx === 4) { // active highlight
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+          }
+        });
+        ctx.restore();
+
+        // Headers
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = '900 32px Nunito';
+        ctx.fillText('⚡ CARA MAIN SUPER GAMPANG', baseWidth / 2, baseHeight * 0.12);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 62px Nunito';
+        ctx.fillText('1 KLIK, 1 PIXEL', baseWidth / 2, baseHeight * 0.12 + 65);
+
+        // Subtitle Card
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        roundRect(ctx, 80, baseHeight * 0.85, baseWidth - 160, 130, 24);
+        ctx.fill();
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '800 30px Nunito';
+        ctx.fillText('Buka di HP &bull; Pilih Warna &bull; Pasang Pixel', baseWidth / 2, baseHeight * 0.85 + 50);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 26px Nunito';
+        ctx.fillText('Tersimpan abadi dan dilihat pemain seluruh dunia!', baseWidth / 2, baseHeight * 0.85 + 95);
+      }
+
+      // =========================================================================
+      // SCENE 3: GOTONG ROYONG MASSAL & MULTIPLAYER (40.0s - 60.0s)
+      // "Ini panggung gotong royong digital! Bangun Garuda, Candi, Monas bersama!"
+      // =========================================================================
+      else if (sec < 60.0) {
+        document.getElementById('scene-label').textContent = 'Act 3: Gotong Royong Live (40s - 60s)';
+        const t3 = sec - 40.0;
+
+        // Big Garuda / Monas Pixel Art Forming in Center
+        ctx.save();
+        ctx.translate(baseWidth / 2, baseHeight * 0.44);
+
+        // Pixel Artwork Outline forming
+        const totalRows = 16;
+        const totalCols = 16;
+        const pSize = 36;
+        const progress = Math.min(1, t3 / 15);
+
+        ctx.translate(- (totalCols * pSize) / 2, - (totalRows * pSize) / 2);
+
+        for (let r = 0; r < totalRows; r++) {
+          for (let c = 0; c < totalCols; c++) {
+            const index = r * totalCols + c;
+            if (index / (totalRows * totalCols) <= progress) {
+              // Garuda / Red-White Flag pattern
+              if (r < 8) {
+                ctx.fillStyle = '#ef4444'; // Merah
+              } else {
+                ctx.fillStyle = '#f8fafc'; // Putih
+              }
+              // Center emblem gold
+              if (r >= 5 && r <= 10 && c >= 5 && c <= 10) {
+                ctx.fillStyle = '#f59e0b';
+              }
+              ctx.fillRect(c * pSize, r * pSize, pSize - 2, pSize - 2);
+            }
+          }
+        }
+        ctx.restore();
+
+        // Animated Multiplayer Cursors
+        cursors.forEach((cur, i) => {
+          const cx = cur.x + Math.sin(t3 * 2 + i) * 120;
+          const cy = cur.y + Math.cos(t3 * 2 + i) * 80;
+
+          ctx.save();
+          ctx.translate(cx, cy);
+
+          // Cursor arrow
+          ctx.fillStyle = cur.col;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(24, 8);
+          ctx.lineTo(14, 18);
+          ctx.lineTo(26, 32);
+          ctx.lineTo(18, 36);
+          ctx.lineTo(6, 22);
+          ctx.lineTo(0, 28);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // User Name Tag
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          roundRect(ctx, 28, 6, 120, 36, 12);
+          ctx.fill();
+          ctx.strokeStyle = cur.col;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '800 18px Nunito';
+          ctx.textAlign = 'left';
+          ctx.fillText(cur.name, 38, 30);
+          ctx.restore();
+        });
+
+        // Chat Bubbles pop up
+        if (t3 > 4.0) {
+          ctx.save();
+          ctx.fillStyle = '#22c55e';
+          roundRect(ctx, 120, baseHeight * 0.24, 380, 50, 20);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '800 22px Nunito';
+          ctx.textAlign = 'center';
+          ctx.fillText('💬 "Ayo garap sayap kanan Garuda!"', 310, baseHeight * 0.24 + 33);
+          ctx.restore();
+        }
+
+        // Header Titles
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#10b981';
+        ctx.font = '900 32px Nunito';
+        ctx.fillText('🤝 REALTIME MULTIPLAYER', baseWidth / 2, baseHeight * 0.10);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 60px Nunito';
+        ctx.fillText('GOTONG ROYONG DIGITAL', baseWidth / 2, baseHeight * 0.10 + 65);
+
+        // Subtitle Card
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        roundRect(ctx, 80, baseHeight * 0.85, baseWidth - 160, 130, 24);
+        ctx.fill();
+        ctx.fillStyle = '#4ade80';
+        ctx.font = '800 30px Nunito';
+        ctx.fillText('Kolaborasi Bareng Ribuan Seniman', baseWidth / 2, baseHeight * 0.85 + 50);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 26px Nunito';
+        ctx.fillText('Wujudkan karya ikonik Nusantara secara live!', baseWidth / 2, baseHeight * 0.85 + 95);
+      }
+
+      // =========================================================================
+      // SCENE 4: FITUR SAKTI (GEMBOK, TEMPLATE, TIMELAPSE) (60.0s - 84.0s)
+      // "Fitur Gembok Emas anti-rusak, Template Foto otomatis, dan Time-Lapse video!"
+      // =========================================================================
+      else if (sec < 84.0) {
+        document.getElementById('scene-label').textContent = 'Act 4: Fitur Sakti (60s - 84s)';
+        const t4 = sec - 60.0;
+
+        // Sub-feature phase: 0-8s (Template), 8-16s (Gembok), 16-24s (Time-Lapse)
+        const subPhase = Math.floor(t4 / 8);
+
+        ctx.save();
+        ctx.translate(baseWidth / 2, baseHeight * 0.45);
+
+        if (subPhase === 0) {
+          // FEATURE 1: TEMPLATE CONVERTER
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          roundRect(ctx, -320, -260, 640, 520, 30);
+          ctx.fill();
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          // Camera / Picture icon transitioning to pixels
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '1000 90px Nunito';
+          ctx.textAlign = 'center';
+          ctx.fillText('📸 ➡️ 👾', 0, -40);
+
+          ctx.fillStyle = '#c084fc';
+          ctx.font = '900 42px Nunito';
+          ctx.fillText('AUTO TEMPLATE PIXEL', 0, 70);
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '700 28px Nunito';
+          ctx.fillText('Upload foto galeri &bull; Auto outline di peta', 0, 130);
+        } else if (subPhase === 1) {
+          // FEATURE 2: GOLDEN LOCK SHIELD
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          roundRect(ctx, -320, -260, 640, 520, 30);
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          // Golden Lock with glowing shield
+          const pulseLock = Math.sin(t4 * 4) * 10;
+          ctx.fillStyle = '#eab308';
+          ctx.font = '1000 110px Nunito';
+          ctx.textAlign = 'center';
+          ctx.fillText('🔒', 0, -30 + pulseLock);
+
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = '900 42px Nunito';
+          ctx.fillText('GEMBOK EMAS PROTEKSI', 0, 70);
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '700 28px Nunito';
+          ctx.fillText('Karyamu aman 100% dari coretan liar!', 0, 130);
+        } else {
+          // FEATURE 3: TIME-LAPSE REPLAY
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          roundRect(ctx, -320, -260, 640, 520, 30);
+          ctx.fill();
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          // Rewind timeline graphics
+          ctx.fillStyle = '#22d3ee';
+          ctx.font = '1000 100px Nunito';
+          ctx.textAlign = 'center';
+          ctx.fillText('⏪ 🎬 ⏩', 0, -40);
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = '900 42px Nunito';
+          ctx.fillText('TIME-LAPSE INTERAKTIF', 0, 70);
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '700 28px Nunito';
+          ctx.fillText('Putar riwayat terciptanya lukisanmu', 0, 130);
+        }
+        ctx.restore();
+
+        // Header Titles
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#c084fc';
+        ctx.font = '900 32px Nunito';
+        ctx.fillText('⭐ FITUR-FITUR SAKTI', baseWidth / 2, baseHeight * 0.12);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 62px Nunito';
+        ctx.fillText('SENJATA KREATIFMU', baseWidth / 2, baseHeight * 0.12 + 65);
+
+        // Subtitle Card
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        roundRect(ctx, 80, baseHeight * 0.85, baseWidth - 160, 130, 24);
+        ctx.fill();
+        ctx.fillStyle = '#e879f9';
+        ctx.font = '800 30px Nunito';
+        ctx.fillText('Template Otomatis &bull; Proteksi Anti-Grief', baseWidth / 2, baseHeight * 0.85 + 50);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 26px Nunito';
+        ctx.fillText('Ekspor video time-lapse langsung ke galeri!', baseWidth / 2, baseHeight * 0.85 + 95);
+      }
+
+      // =========================================================================
+      // SCENE 5: PERANG TERITORI & LEADERBOARD PROVINSI (84.0s - 105.0s)
+      // "Bela provinsimu! Jabar, Jatim, DKI, Sumut, Bali, Papua... buktikan di leaderboard!"
+      // =========================================================================
+      else if (sec < 105.0) {
+        document.getElementById('scene-label').textContent = 'Act 5: Perang Provinsi (84s - 105s)';
+        const t5 = sec - 84.0;
+
+        // Leaderboard Panel
+        ctx.save();
+        ctx.translate(baseWidth / 2 - 360, baseHeight * 0.32);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+        roundRect(ctx, 0, 0, 720, 680, 28);
+        ctx.fill();
+        ctx.strokeStyle = '#e11d48';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Leaderboard Rows
+        const ranks = [
+          { rank: '👑 #1', name: 'Jawa Barat', score: '382,490 px', col: '#fbbf24' },
+          { rank: '🥈 #2', name: 'DKI Jakarta', score: '341,120 px', col: '#94a3b8' },
+          { rank: '🥉 #3', name: 'Jawa Timur', score: '298,400 px', col: '#d97706' },
+          { rank: '🎖️ #4', name: 'Sumatera Utara', score: '245,610 px', col: '#38bdf8' },
+          { rank: '🎖️ #5', name: 'Bali & Nusra', score: '190,830 px', col: '#4ade80' }
+        ];
+
+        ctx.textAlign = 'left';
+        ranks.forEach((rk, i) => {
+          const ry = 40 + i * 115;
+          ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
+          roundRect(ctx, 30, ry, 660, 90, 18);
+          ctx.fill();
+
+          ctx.fillStyle = rk.col;
+          ctx.font = '900 36px Nunito';
+          ctx.fillText(rk.rank, 55, ry + 56);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '800 32px Nunito';
+          ctx.fillText(rk.name, 190, ry + 56);
+
+          ctx.fillStyle = '#f43f5e';
+          ctx.font = '900 28px monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(rk.score, 660, ry + 56);
+          ctx.textAlign = 'left';
+        });
+
+        ctx.restore();
+
+        // Header Titles
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#f43f5e';
+        ctx.font = '900 32px Nunito';
+        ctx.fillText('⚔️ KOMPETISI DAERAH', baseWidth / 2, baseHeight * 0.12);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 62px Nunito';
+        ctx.fillText('LEADERBOARD NUSANTARA', baseWidth / 2, baseHeight * 0.12 + 65);
+
+        // Subtitle Card
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        roundRect(ctx, 80, baseHeight * 0.86, baseWidth - 160, 130, 24);
+        ctx.fill();
+        ctx.fillStyle = '#fb7185';
+        ctx.font = '800 30px Nunito';
+        ctx.fillText('Bela Kebanggaan Daerahmu!', baseWidth / 2, baseHeight * 0.86 + 50);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 26px Nunito';
+        ctx.fillText('Siapakah komunitas paling kompak di tanah air?', baseWidth / 2, baseHeight * 0.86 + 95);
+      }
+
+      // =========================================================================
+      // SCENE 6: OUTRO & CALL TO ACTION (105.0s - 120.0s)
+      // "Gratis! Tanpa download aplikasi, login 1-klik Google di nusapixel.xyz"
+      // =========================================================================
+      else {
+        document.getElementById('scene-label').textContent = 'Act 6: Call To Action (105s - 120s)';
+        const t6 = sec - 105.0;
+
+        // Big NusaPixel Logo Box
+        ctx.save();
+        ctx.translate(baseWidth / 2, baseHeight * 0.38);
+
+        const pop = Math.min(1, t6 * 2);
+        ctx.scale(pop, pop);
+
+        ctx.fillStyle = '#2563eb';
+        roundRect(ctx, -140, -140, 280, 280, 48);
+        ctx.fill();
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 160px Nunito';
+        ctx.textAlign = 'center';
+        ctx.fillText('N', 0, 55);
+
+        ctx.restore();
+
+        // Confetti Fireworks
+        particles.forEach(p => {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.col;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          ctx.restore();
+
+          p.y += p.vy;
+          p.x += p.vx;
+          p.rot += 0.05;
+          if (p.y > baseHeight) p.y = -20;
+        });
+
+        // Branding Title
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 78px Nunito';
+        ctx.shadowColor = 'rgba(59, 130, 246, 0.8)';
+        ctx.shadowBlur = 30;
+        ctx.fillText('NusaPixel', baseWidth / 2, baseHeight * 0.58);
+        ctx.shadowBlur = 0;
+
+        // Feature Highlights Pills
+        ctx.fillStyle = '#10b981';
+        roundRect(ctx, baseWidth / 2 - 320, baseHeight * 0.63, 640, 60, 30);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 28px Nunito';
+        ctx.fillText('✨ GRATIS &bull; TANPA PERLU DOWNLOAD', baseWidth / 2, baseHeight * 0.63 + 42);
+
+        // Big Glow URL Button
+        ctx.save();
+        ctx.translate(baseWidth / 2, baseHeight * 0.77);
+        const pulseBtn = 1.0 + Math.sin(t6 * 5) * 0.04;
+        ctx.scale(pulseBtn, pulseBtn);
+
+        const btnGrad = ctx.createLinearGradient(-320, 0, 320, 0);
+        btnGrad.addColorStop(0, '#f59e0b');
+        btnGrad.addColorStop(0.5, '#ef4444');
+        btnGrad.addColorStop(1, '#ec4899');
+        ctx.fillStyle = btnGrad;
+        roundRect(ctx, -320, -60, 640, 120, 36);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '1000 52px monospace';
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 15;
+        ctx.fillText('nusapixel.xyz', 0, 18);
+        ctx.restore();
+
+        // Final Tagline
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '800 32px Nunito';
+        ctx.fillText('Kunjungi Sekarang & Torehkan Karyamu!', baseWidth / 2, baseHeight * 0.90);
+      }
+
+      ctx.restore();
+    }
+
+    // ==============================================================================
+    // ANIMATION & AUDIO SYNC ENGINE
+    // ==============================================================================
+    let animFrameId = null;
+    let manualSeekMs = 0;
+    let isSeeking = false;
+
+    function loop(timestamp) {
+      if (!startTime) startTime = timestamp - manualSeekMs;
+      
+      const elapsed = isSeeking ? manualSeekMs : (timestamp - startTime);
+      const loopTime = elapsed % TOTAL_MS;
+
+      // Update UI Progress
+      const curSec = Math.floor(loopTime / 1000);
+      const minStr = String(Math.floor(curSec / 60)).padStart(2, '0');
+      const secStr = String(curSec % 60).padStart(2, '0');
+      document.getElementById('time-current').textContent = `${minStr}:${secStr}`;
+      document.getElementById('progress-bar').style.width = `${(loopTime / TOTAL_MS) * 100}%`;
+
+      // Sync VO audio if loaded
+      if (voAudio && !voAudio.paused && !isSeeking) {
+        if (Math.abs(voAudio.currentTime - (loopTime / 1000)) > 0.4) {
+          voAudio.currentTime = loopTime / 1000;
+        }
+      } else if (!voAudio) {
+        updateBGM(loopTime);
+      }
+
+      // Render graphics
+      renderFrame(loopTime);
+
+      if (isPlaying) {
+        animFrameId = requestAnimationFrame(loop);
+      }
+    }
+
+    function startPlayback() {
+      initAudio();
+      isPlaying = true;
+      document.getElementById('play-icon').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+      document.getElementById('play-btn-label').textContent = '⏸️ Pause';
+      
+      if (voAudio) {
+        voAudio.play().catch(() => {});
+      }
+      animFrameId = requestAnimationFrame(loop);
+    }
+
+    function pausePlayback() {
+      isPlaying = false;
+      document.getElementById('play-icon').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+      document.getElementById('play-btn-label').textContent = '▶️ Putar';
+      
+      if (voAudio) {
+        voAudio.pause();
+      }
+      if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+      }
+    }
+
+    function seekTo(targetSeconds) {
+      initAudio();
+      manualSeekMs = targetSeconds * 1000;
+      startTime = performance.now() - manualSeekMs;
+      
+      if (voAudio) {
+        voAudio.currentTime = targetSeconds;
+      }
+      renderFrame(manualSeekMs);
+      
+      const minStr = String(Math.floor(targetSeconds / 60)).padStart(2, '0');
+      const secStr = String(targetSeconds % 60).padStart(2, '0');
+      document.getElementById('time-current').textContent = `${minStr}:${secStr}`;
+      document.getElementById('progress-bar').style.width = `${(targetSeconds / TOTAL_DURATION_SEC) * 100}%`;
+      
+      if (!isPlaying) {
+        startPlayback();
+      }
+    }
+
+    // Toggle Play/Pause
+    document.getElementById('btn-toggle-play').addEventListener('click', () => {
+      if (isPlaying) pausePlayback(); else startPlayback();
+    });
+    document.getElementById('btn-play-pause-txt').addEventListener('click', () => {
+      if (isPlaying) pausePlayback(); else startPlayback();
+    });
+
+    // Restart
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      seekTo(0);
+    });
+
+    // Sound toggle
+    document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+      audioMuted = !audioMuted;
+      document.getElementById('sound-label').textContent = audioMuted ? '🔇 Audio: Mati' : '🔊 Audio: Nyala';
+      if (voGainNode) {
+        voGainNode.gain.value = audioMuted ? 0 : parseFloat(document.getElementById('vo-volume').value);
+      }
+    });
+
+    // Timeline Scrubbing
+    const progressWrap = document.getElementById('progress-bar-wrap');
+    progressWrap.addEventListener('click', (e) => {
+      const rect = progressWrap.getBoundingClientRect();
+      const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      seekTo(frac * TOTAL_DURATION_SEC);
+    });
+
+    // Aspect Ratio Switching (9:16 vs 16:9)
+    const btn916 = document.getElementById('btn-aspect-916');
+    const btn169 = document.getElementById('btn-aspect-169');
+
+    btn916.addEventListener('click', () => {
+      currentAspectRatio = '9:16';
+      baseWidth = 1080;
+      baseHeight = 1920;
+      canvas.width = baseWidth;
+      canvas.height = baseHeight;
+      canvasWrap.style.aspectRatio = '9/16';
+      canvasWrap.style.maxWidth = '340px';
+
+      btn916.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow transition-all';
+      btn169.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all';
+      renderFrame(manualSeekMs);
+    });
+
+    btn169.addEventListener('click', () => {
+      currentAspectRatio = '16:9';
+      baseWidth = 1920;
+      baseHeight = 1080;
+      canvas.width = baseWidth;
+      canvas.height = baseHeight;
+      canvasWrap.style.aspectRatio = '16/9';
+      canvasWrap.style.maxWidth = '640px';
+
+      btn169.className = 'px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow transition-all';
+      btn916.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all';
+      renderFrame(manualSeekMs);
+    });
+
+    // ==============================================================================
+    // VOICE-OVER AUDIO UPLOAD & INTEGRATION
+    // ==============================================================================
+    const voFileInput = document.getElementById('vo-file-input');
+    const voFilenameLabel = document.getElementById('audio-filename');
+    const audioStatusPill = document.getElementById('audio-status-pill');
+    const voIndicator = document.getElementById('vo-indicator');
+    const audioControlsRow = document.getElementById('audio-controls-row');
+    const voVolumeSlider = document.getElementById('vo-volume');
+    const btnRemoveVo = document.getElementById('btn-remove-vo');
+
+    voFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      initAudio();
+      if (voAudio) {
+        voAudio.pause();
+        voAudio = null;
+      }
+
+      const url = URL.createObjectURL(file);
+      voAudio = new Audio(url);
+      voAudio.loop = false;
+
+      // Connect VO audio element to WebAudio so it can be recorded!
+      try {
+        voSourceNode = audioContext.createMediaElementSource(voAudio);
+        voGainNode = audioContext.createGain();
+        voGainNode.gain.value = parseFloat(voVolumeSlider.value);
+
+        voSourceNode.connect(voGainNode);
+        voGainNode.connect(audioContext.destination);
+        if (audioDest) {
+          voGainNode.connect(audioDest);
+        }
+      } catch (err) {
+        console.warn('Audio node connection error:', err);
+      }
+
+      voFilenameLabel.textContent = `✅ ${file.name}`;
+      audioStatusPill.textContent = 'Voiceover Aktif';
+      audioStatusPill.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      voIndicator.style.display = 'flex';
+      audioControlsRow.style.display = 'flex';
+
+      seekTo(0);
+    });
+
+    voVolumeSlider.addEventListener('input', (e) => {
+      if (voGainNode) {
+        voGainNode.gain.value = parseFloat(e.target.value);
+      }
+    });
+
+    btnRemoveVo.addEventListener('click', () => {
+      if (voAudio) {
+        voAudio.pause();
+        voAudio = null;
+      }
+      voFileInput.value = '';
+      voFilenameLabel.textContent = 'Pilih File Suara ElevenLabs (.mp3/.wav)';
+      audioStatusPill.textContent = 'Menggunakan BGM Synth';
+      audioStatusPill.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400';
+      voIndicator.style.display = 'none';
+      audioControlsRow.style.display = 'none';
+    });
+
+    // Copy script button
+    document.getElementById('btn-copy-script').addEventListener('click', () => {
+      const text = document.getElementById('script-full-text').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('btn-copy-script');
+        btn.textContent = '✅ Berhasil Disalin!';
+        setTimeout(() => {
+          btn.textContent = 'Salin Naskah';
+        }, 2000);
+      });
+    });
+
+    // ==============================================================================
+    // HD VIDEO EXPORT (CANVAS STREAM + SYNTH/VO AUDIO MIX)
+    // ==============================================================================
+    const btnRecord = document.getElementById('btn-record-download');
+    const recordBtnText = document.getElementById('record-btn-text');
+    const recBadge = document.getElementById('recording-badge');
+
+    btnRecord.addEventListener('click', async () => {
+      if (isRecording) {
+        stopRecording();
+        return;
+      }
+
+      initAudio();
+      seekTo(0);
+
+      try {
+        const videoStream = canvas.captureStream(60); // 60 FPS HD stream
+        let combinedStream = videoStream;
+
+        // Mix in AudioDest stream (Containing BGM + ElevenLabs Voiceover)
+        if (audioDest && audioDest.stream && audioDest.stream.getAudioTracks().length > 0) {
+          const audioTrack = audioDest.stream.getAudioTracks()[0];
+          combinedStream = new MediaStream([
+            ...videoStream.getVideoTracks(),
+            audioTrack
+          ]);
+        }
+
+        const mimeOptions = [
+          'video/mp4;codecs=avc1,mp4a.40.2',
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm'
+        ];
+        let chosenMime = mimeOptions.find(type => MediaRecorder.isTypeSupported(type)) || '';
+
+        mediaRecorder = new MediaRecorder(combinedStream, {
+          mimeType: chosenMime,
+          videoBitsPerSecond: 10_000_000 // 10 Mbps crisp quality
+        });
+
+        recordedChunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const ext = chosenMime.includes('mp4') ? 'mp4' : 'webm';
+          const blob = new Blob(recordedChunks, { type: chosenMime || 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = `nusapixel-promo-120s-${currentAspectRatio.replace(':','x')}.${ext}`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 1000);
+
+          isRecording = false;
+          recBadge.style.display = 'none';
+          recordBtnText.textContent = 'Render & Unduh Video HD (2 Menit)';
+          btnRecord.classList.remove('animate-pulse');
+        };
+
+        // Start Recording
+        isRecording = true;
+        mediaRecorder.start(1000);
+        recBadge.style.display = 'flex';
+        recordBtnText.textContent = 'Merekam... Klik untuk Stop';
+        btnRecord.classList.add('animate-pulse');
+
+        // Auto stop when reaching 120 seconds
+        setTimeout(() => {
+          if (isRecording) {
+            stopRecording();
+          }
+        }, TOTAL_MS + 500);
+
+      } catch (err) {
+        alert('Gagal merekam video: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    }
+
+    // Auto start animation on first user interaction
+    window.addEventListener('load', () => {
+      animFrameId = requestAnimationFrame(loop);
+    });
+    window.addEventListener('click', () => {
+      initAudio();
+    }, { once: true });
+  </script>
+</body>
+</html>
