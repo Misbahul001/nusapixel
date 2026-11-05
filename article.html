@@ -7,11 +7,15 @@
   <meta id="metaDesc" name="description" content="Baca artikel teknologi dan wawasan digital terkini di NusaPixel.">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link id="canonicalUrl" rel="canonical" href="https://www.nusapixel.xyz/blog">
+
   <!-- Open Graph -->
   <meta id="ogTitle" property="og:title" content="NusaPixel Jurnal">
   <meta id="ogDesc" property="og:description" content="Wawasan teknologi dan ulasan digital mendalam.">
   <meta id="ogType" property="og:type" content="article">
-  <meta id="ogImage" property="og:image" content="">
+  <meta id="ogUrl" property="og:url" content="https://www.nusapixel.xyz/blog">
+  <meta id="ogImage" property="og:image" content="https://www.nusapixel.xyz/icon-512.png">
 
   <!-- Google Fonts: Newsreader (Editorial Serif) & Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -509,6 +513,11 @@
       document.getElementById('metaDesc').content = article.meta_description || '';
       document.getElementById('ogTitle').content = article.title;
       document.getElementById('ogDesc').content = article.meta_description || '';
+      document.getElementById('canonicalUrl').href = window.location.href;
+      document.getElementById('ogUrl').content = window.location.href;
+      if (article.featured_image) {
+        document.getElementById('ogImage').content = article.featured_image;
+      }
 
       // Header fields
       document.getElementById('articleTitle').innerText = article.title;

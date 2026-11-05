@@ -1,0 +1,7 @@
+# robots.txt for NusaPixel
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://www.nusapixel.xyz/sitemap.xml
+Sitemap: https://nusapixel.xyz/sitemap.xml
