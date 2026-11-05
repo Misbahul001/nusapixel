@@ -1086,6 +1086,89 @@ body {
     align-items: flex-start;
   }
 }
+
+/* Jurnal & Tutorial Section Styles */
+.journal-section {
+  padding: 4.5rem 0;
+  background: #FFFFFF;
+  border-top: 2px solid var(--card-border);
+  border-bottom: 2px solid var(--card-border);
+}
+.home-articles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+.home-art-card {
+  background: var(--surface-subtle);
+  border: 2px solid var(--card-border);
+  border-bottom: 4px solid var(--card-border-strong);
+  border-radius: var(--radius-md);
+  padding: 1.35rem;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 180ms ease;
+}
+.home-art-card:hover {
+  transform: translateY(-3px);
+  border-color: #2563EB;
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.12);
+}
+.home-art-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #2563EB;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.home-art-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+.home-art-excerpt {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.home-art-meta {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-all-articles {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #0F172A;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
+  transition: all 180ms ease;
+}
+.btn-all-articles:hover {
+  background: #2563EB;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+}
 </style>
 </head>
 <body>
@@ -1110,12 +1193,13 @@ body {
       <li><a href="#cara-main">Cara Main</a></li>
       <li><a href="#fitur">Fitur Kanvas</a></li>
       <li><a href="#statistik">Statistik Hidup</a></li>
+      <li><a href="#jurnal" style="color:var(--cube-blue);font-weight:700;">Jurnal & Tutorial</a></li>
       <li><a href="javascript:void(0)" id="btn-open-rules">Aturan Komunitas</a></li>
     </ul>
 
     <!-- Header Right (CTA + Mobile Toggle) -->
     <div class="nav-right">
-      <a href="game.html?v=30" class="btn-cta-nav">
+      <a href="/game" class="btn-cta-nav">
         <span>Buka Kanvas</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M5 12h14"></path>
@@ -1134,8 +1218,12 @@ body {
 
   <!-- Mobile Drawer Menu -->
   <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
-    <a href="game.html?v=30" class="mobile-nav-link" style="color:var(--cube-blue);font-weight:800;border-left:3px solid var(--cube-blue);padding-left:12px;">
+    <a href="/game" class="mobile-nav-link" style="color:var(--cube-blue);font-weight:800;border-left:3px solid var(--cube-blue);padding-left:12px;">
       <span>Masuk ke Game Peta</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    <a href="/blog" class="mobile-nav-link" style="color:var(--accent-mint-dark);font-weight:800;">
+      <span>Jurnal & Tutorial Teknologi</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
     <a href="#cara-main" class="mobile-nav-link">
@@ -1173,21 +1261,20 @@ body {
           Goreskan blok pixelmu di atas peta nyata Nusantara. Berkolaborasi dengan ribuan seniman lokal, taklukkan misi wilayah, dan bangun karya seni legendaris tanpa batas.
         </p>
         <div class="hero-actions">
-          <a href="game.html?v=30" class="btn-hero-primary">
+          <a href="/game" class="btn-hero-primary">
             <span>Mulai Menggambar</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14"></path>
               <path d="m12 5 7 7-7 7"></path>
             </svg>
           </a>
-          <button type="button" class="btn-hero-secondary" id="btn-hero-rules">
+          <a href="/blog" class="btn-hero-secondary" style="text-decoration:none;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            <span>Pedoman Komunitas</span>
-          </button>
+            <span>Baca Jurnal Teknologi</span>
+          </a>
         </div>
         <div class="hero-perks">
           <div class="hero-perk-pill">
@@ -1618,6 +1705,66 @@ body {
     </div>
   </section>
 
+  <!-- Jurnal & Wawasan Teknologi Section (SEO & Cross-traffic Engine) -->
+  <section class="journal-section" id="jurnal">
+    <div class="container">
+      <div class="section-head-wrap" style="text-align: center; max-width: 680px; margin: 0 auto 2.5rem;">
+        <div class="hero-badge" style="margin: 0 auto 0.75rem; background: rgba(37,99,235,0.1); border-color: rgba(37,99,235,0.25);">
+          <span class="hero-badge-dot" style="background:#2563EB;"></span>
+          <span style="color:#2563EB;">JURNAL & TUTORIAL TEKNOLOGI</span>
+        </div>
+        <h2 class="section-title" style="font-size: clamp(1.6rem, 3.5vw, 2.3rem); margin-bottom: 0.75rem;">
+          Wawasan Digital & Solusi Sehari-hari
+        </h2>
+        <p class="section-desc" style="color: var(--text-muted); font-size: 0.95rem;">
+          Panduan praktis, ulasan gadget terkini, dan eksplorasi kecerdasan buatan terkurasi untuk memperkaya wawasan teknologi Anda.
+        </p>
+      </div>
+
+      <!-- Articles Grid (Hydrated by Supabase, with Static SEO Fallback) -->
+      <div id="homepageArticlesGrid" class="home-articles-grid">
+        <!-- Static Fallback Cards for Instant SEO Crawling -->
+        <a href="/article?slug=cara-membuat-foto-ai-realistis-gratis-di-hp" class="home-art-card">
+          <div>
+            <div class="home-art-tag">Tutorial AI</div>
+            <h3 class="home-art-title">Cara Membuat Foto AI Realistis Gratis di HP Tanpa Aplikasi Berbayar</h3>
+            <p class="home-art-excerpt">Panduan langkah demi langkah membuat foto potret bergaya profesional menggunakan generator kecerdasan buatan gratis.</p>
+          </div>
+          <div class="home-art-meta">
+            <span>⏱️ 5 menit baca</span> &bull; <span>Baca Selengkapnya &rarr;</span>
+          </div>
+        </a>
+        <a href="/article?slug=cara-membersihkan-cache-dan-file-sampah-android" class="home-art-card">
+          <div>
+            <div class="home-art-tag">Tutorial Android</div>
+            <h3 class="home-art-title">Cara Membersihkan Cache dan File Sampah Tersembunyi di Android</h3>
+            <p class="home-art-excerpt">Trik melegakan memori internal smartphone yang penuh tanpa menghapus foto, video, atau dokumen penting.</p>
+          </div>
+          <div class="home-art-meta">
+            <span>⏱️ 4 menit baca</span> &bull; <span>Baca Selengkapnya &rarr;</span>
+          </div>
+        </a>
+        <a href="/article?slug=ray-ban-meta-masuk-indonesia-harga-fitur-privasi" class="home-art-card">
+          <div>
+            <div class="home-art-tag">Gadget</div>
+            <h3 class="home-art-title">Kacamata Pintar Ray-Ban & Oakley Meta Resmi Masuk Indonesia</h3>
+            <p class="home-art-excerpt">Ulasan varian, harga resmi, integrasi kamera AI, dan analisis privasi kacamata pintar pintar terbaru.</p>
+          </div>
+          <div class="home-art-meta">
+            <span>⏱️ 4 menit baca</span> &bull; <span>Baca Selengkapnya &rarr;</span>
+          </div>
+        </a>
+      </div>
+
+      <div style="text-align: center; margin-top: 2.5rem;">
+        <a href="/blog" class="btn-all-articles">
+          <span>Jelajahi Semua Artikel Jurnal</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA Box Section (design.md) -->
   <section class="cta-banner-section">
     <div class="container">
@@ -1825,9 +1972,60 @@ async function loadPublicStats() {
   }
 }
 
+// Memuat Artikel Terkini dari Supabase untuk Homepage
+async function loadHomepageArticles() {
+  if (!sb) return;
+  try {
+    const { data: articles, error } = await sb
+      .from('articles')
+      .select('title, slug, category, meta_description, reading_time, views, created_at')
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+      .limit(6);
+
+    if (error || !articles || articles.length === 0) return;
+
+    const grid = document.getElementById('homepageArticlesGrid');
+    if (!grid) return;
+
+    grid.innerHTML = articles.map(art => {
+      const cat = art.category || 'Teknologi';
+      const readTime = art.reading_time || 4;
+      const desc = art.meta_description || 'Panduan dan wawasan teknologi pilihan dari redaksi NusaPixel.';
+      return `
+        <a href="/article?slug=${encodeURIComponent(art.slug)}" class="home-art-card">
+          <div>
+            <div class="home-art-tag">${escapeHtml(cat)}</div>
+            <h3 class="home-art-title">${escapeHtml(art.title)}</h3>
+            <p class="home-art-excerpt">${escapeHtml(desc)}</p>
+          </div>
+          <div class="home-art-meta">
+            <span>⏱️ ${readTime} menit baca</span>
+            <span>&bull;</span>
+            <span>Baca Selengkapnya &rarr;</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+  } catch (err) {
+    console.warn('[Articles] Error loading homepage articles:', err);
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Jalankan saat dokumen siap
 window.addEventListener('DOMContentLoaded', () => {
   loadPublicStats();
+  loadHomepageArticles();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(err => {
