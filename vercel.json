@@ -5,6 +5,9 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/game", "destination": "/game.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/article", "destination": "/article.html" },
+    { "source": "/baca", "destination": "/article.html" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/promo", "destination": "/promo.html" },
     { "source": "/promo-long", "destination": "/promo_long.html" },
