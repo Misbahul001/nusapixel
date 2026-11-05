@@ -17,7 +17,10 @@
   <meta id="ogUrl" property="og:url" content="https://www.nusapixel.xyz/blog">
   <meta id="ogImage" property="og:image" content="https://www.nusapixel.xyz/icon-512.png">
 
-  <!-- Google Fonts: Newsreader (Editorial Serif) & Inter & JetBrains Mono -->
+  <!-- DNS-Prefetch & Preconnect for High Speed Loading -->
+  <link rel="dns-prefetch" href="https://npmfiituiionyapoipyd.supabase.co">
+  <link rel="preconnect" href="https://npmfiituiionyapoipyd.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,600;0,6..72,700;1,6..72,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -385,6 +388,85 @@
       color: var(--text-muted);
     }
 
+    /* Reading Progress Bar */
+    #readingProgressBar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #10B981, #06B6D4);
+      width: 0%;
+      z-index: 100;
+      transition: width 80ms ease-out;
+    }
+
+    /* Related Articles Section */
+    .related-section {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 2px dashed var(--border);
+    }
+
+    .related-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .related-card {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 180ms ease;
+    }
+
+    .related-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08);
+    }
+
+    .related-card-cat {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .related-card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.35;
+      margin-bottom: 8px;
+    }
+
+    .related-card-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     footer {
       background: var(--surface-subtle);
       border-top: 1px solid var(--border);
@@ -397,6 +479,8 @@
   </style>
 </head>
 <body>
+  <!-- Top Reading Progress Indicator -->
+  <div id="readingProgressBar"></div>
 
   <!-- Top Header Navigation (Only this is sticky) -->
   <header class="site-header">
@@ -456,6 +540,14 @@
       <!-- Prose Body -->
       <div id="articleBody" class="article-content"></div>
 
+      <!-- Related Articles / Rekomendasi Bacaan Lainnya -->
+      <section id="relatedArticlesSection" class="related-section" style="display: none;">
+        <h3 class="related-title">
+          <span>📖</span> Rekomendasi Bacaan Lainnya
+        </h3>
+        <div id="relatedArticlesGrid" class="related-grid"></div>
+      </section>
+
       <!-- Promo Canvas Banner -->
       <section class="promo-banner">
         <div class="promo-text">
@@ -509,12 +601,45 @@
         renderArticleData(data);
         // Increment real-time view counter in Supabase
         sb.rpc('increment_article_views', { article_slug: slug });
+        // Load related articles
+        loadRelatedArticles(slug, data.category);
       } catch (err) {
         console.error('Fetch error:', err);
         document.getElementById('articleLoader').innerHTML = `
           <h2>Artikel tidak ditemukan atau sudah dihapus</h2>
           <p style="margin-top:8px;"><a href="/blog" style="color:var(--accent);">← Kembali ke Halaman Jurnal</a></p>
         `;
+      }
+    }
+
+    async function loadRelatedArticles(currentSlug, currentCat) {
+      try {
+        const { data: related } = await sb
+          .from('articles')
+          .select('title, slug, category, reading_time, views')
+          .eq('is_published', true)
+          .neq('slug', currentSlug)
+          .limit(3);
+
+        if (related && related.length > 0) {
+          const grid = document.getElementById('relatedArticlesGrid');
+          grid.innerHTML = related.map(item => `
+            <a href="/article?slug=${encodeURIComponent(item.slug)}" class="related-card">
+              <div>
+                <div class="related-card-cat">${escapeHtml(item.category || 'Teknologi')}</div>
+                <div class="related-card-title">${escapeHtml(item.title)}</div>
+              </div>
+              <div class="related-card-meta">
+                <span>⏱️ ${item.reading_time || 3} mnt</span>
+                <span>•</span>
+                <span>👁️ ${(item.views || 0)}x dibaca</span>
+              </div>
+            </a>
+          `).join('');
+          document.getElementById('relatedArticlesSection').style.display = 'block';
+        }
+      } catch (e) {
+        console.error('Error loading related articles:', e);
       }
     }
 
@@ -547,6 +672,22 @@
           day: 'numeric', month: 'short', year: 'numeric'
         });
       }
+
+      // Inject Breadcrumb Schema for Google SERP
+      try {
+        const breadcrumbScript = document.createElement('script');
+        breadcrumbScript.type = 'application/ld+json';
+        breadcrumbScript.text = JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Beranda", "item": "https://www.nusapixel.xyz/" },
+            { "@type": "ListItem", "position": 2, "name": "Jurnal", "item": "https://www.nusapixel.xyz/blog" },
+            { "@type": "ListItem", "position": 3, "name": article.title, "item": window.location.href }
+          ]
+        });
+        document.head.appendChild(breadcrumbScript);
+      } catch (e) {}
 
       // Content HTML
       const bodyEl = document.getElementById('articleBody');
@@ -582,22 +723,41 @@
       document.getElementById('tocBox').style.display = 'block';
     }
 
+    // Reading Progress Bar listener
+    window.addEventListener('scroll', () => {
+      const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+      const bar = document.getElementById('readingProgressBar');
+      if (bar) bar.style.width = scrolled + '%';
+    }, { passive: true });
+
     function shareWhatsApp() {
-      const url = encodeURIComponent(window.location.href);
-      const title = encodeURIComponent(document.title);
-      window.open(`https://api.whatsapp.com/send?text=${title}%20${url}`, '_blank');
+      const title = document.getElementById('articleTitle').innerText;
+      const text = encodeURIComponent(`💡 Panduan Menarik: "${title}"\n\nBaca selengkapnya di NusaPixel:\n${window.location.href}`);
+      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
     }
 
     function shareTwitter() {
-      const url = encodeURIComponent(window.location.href);
-      const text = encodeURIComponent(document.title);
-      window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+      const title = document.getElementById('articleTitle').innerText;
+      const text = encodeURIComponent(`💡 "${title}" via @nusapixel\n\n${window.location.href}`);
+      window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
     }
 
     function copyLink() {
       navigator.clipboard.writeText(window.location.href).then(() => {
         alert('Tautan artikel berhasil disalin!');
       });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     fetchArticle();
