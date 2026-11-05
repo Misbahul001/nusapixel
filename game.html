@@ -4055,9 +4055,9 @@ async function showPixelInfo(x, y) {
     };
   }
 
-  $('btn-info-close').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
-  $('btn-info-ok').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
-  $('btn-info-report').onclick = async () => {
+  if ($('btn-info-close')) $('btn-info-close').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
+  if ($('btn-info-ok')) $('btn-info-ok').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
+  if ($('btn-info-report')) $('btn-info-report').onclick = async () => {
     Sfx.click();
     $('panel').style.display = 'none';
     const reason = await uiPrompt({
@@ -4597,11 +4597,11 @@ function setMode(mode) {
   }
 }
 
-$('btn-draw').onclick = () => { Sfx.click(); setMode('draw'); };
+if ($('btn-draw')) $('btn-draw').onclick = () => { Sfx.click(); setMode('draw'); };
 if ($('btn-pan')) $('btn-pan').onclick = () => { Sfx.click(); setMode('pan'); };
 if ($('btn-info')) $('btn-info').onclick = () => { Sfx.click(); setMode('info'); };
 if ($('btn-pipette')) $('btn-pipette').onclick = () => { Sfx.click(); setMode('pipette'); };
-$('btn-erase').onclick = () => { Sfx.click(); setMode('erase'); };
+if ($('btn-erase')) $('btn-erase').onclick = () => { Sfx.click(); setMode('erase'); };
 
 if ($('btn-undo')) $('btn-undo').onclick = () => { undoPixel(); };
 if ($('btn-redo')) $('btn-redo').onclick = () => { redoPixel(); };
@@ -4623,26 +4623,32 @@ window.addEventListener('keydown', e => {
   }
 });
 
-$('btn-grid').onclick = () => {
-  Sfx.click();
-  showGrid = !showGrid;
-  $('btn-grid').classList.toggle('active', showGrid);
-  $('btn-grid').classList.toggle('on', showGrid);
-  linesGrid.redraw();
-  toast(showGrid ? 'Garis grid bantuan diaktifkan' : 'Garis grid bantuan dinonaktifkan');
-};
+if ($('btn-grid')) {
+  $('btn-grid').onclick = () => {
+    Sfx.click();
+    showGrid = !showGrid;
+    $('btn-grid').classList.toggle('active', showGrid);
+    $('btn-grid').classList.toggle('on', showGrid);
+    linesGrid.redraw();
+    toast(showGrid ? 'Garis grid bantuan diaktifkan' : 'Garis grid bantuan dinonaktifkan');
+  };
+}
 
 function updateActiveSwatch() {
   const s = $('active-swatch');
   if (s) s.style.background = PAL[col];
 }
-$('btn-palette-toggle').onclick = e => {
-  e.stopPropagation();
-  Sfx.click();
-  const p = $('pal-popover');
-  p.classList.toggle('open');
-  $('btn-palette-toggle').classList.toggle('open', p.classList.contains('open'));
-};
+if ($('btn-palette-toggle')) {
+  $('btn-palette-toggle').onclick = e => {
+    e.stopPropagation();
+    Sfx.click();
+    const p = $('pal-popover');
+    if (p) {
+      p.classList.toggle('open');
+      $('btn-palette-toggle').classList.toggle('open', p.classList.contains('open'));
+    }
+  };
+}
 
 const zb = $('zoom-banner');
 if (zb) {
@@ -5469,8 +5475,7 @@ function wireAuthButtons() {
 }
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
   if ($('tt')) $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
-}
-$('open').onclick = () => { Sfx.click(); panel('missions'); };
+if ($('open')) $('open').onclick = () => { Sfx.click(); panel('missions'); };
 if ($('panel')) {
   $('panel').onclick = (e) => {
     if (e.target && e.target.id === 'panel') {
@@ -5863,7 +5868,7 @@ async function showTeamPicker() {
 
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); peringkat('team'); };
   if ($('btn-cancel-team')) $('btn-cancel-team').onclick = () => { Sfx.click(); peringkat('team'); };
-  $('btn-save-team').onclick = async () => {
+  if ($('btn-save-team')) $('btn-save-team').onclick = async () => {
     Sfx.click();
     const regId = parseInt($('sel-prov').value);
     if (isNaN(regId) || !regId) return toast('Pilih salah satu provinsi');
@@ -6050,15 +6055,15 @@ async function peringkat(tab = rankTab, kind = rankKind){
   $('panel').style.display = 'block';
 
   // Tab switchers
-  $('tab-p-player').onclick = () => { Sfx.click(); peringkat('player', rankKind); };
-  $('tab-p-team').onclick = () => { Sfx.click(); peringkat('team'); };
+  if ($('tab-p-player')) $('tab-p-player').onclick = () => { Sfx.click(); peringkat('player', rankKind); };
+  if ($('tab-p-team')) $('tab-p-team').onclick = () => { Sfx.click(); peringkat('team'); };
 
   if (tab === 'player') {
-    $('t1').onclick = () => { Sfx.click(); peringkat('player', 'day'); };
-    $('t2').onclick = () => { Sfx.click(); peringkat('player', 'all'); };
-    $('sn').onclick = async () => {
+    if ($('t1')) $('t1').onclick = () => { Sfx.click(); peringkat('player', 'day'); };
+    if ($('t2')) $('t2').onclick = () => { Sfx.click(); peringkat('player', 'all'); };
+    if ($('sn')) $('sn').onclick = async () => {
       Sfx.click();
-      const nVal = $('nk').value.trim();
+      const nVal = $('nk') ? $('nk').value.trim() : '';
       if (SB_URL.includes('PROJECT-ID')) {
         me.nick = nVal || 'Anonim';
         toast('Nama disimpan');
@@ -6083,37 +6088,40 @@ async function peringkat(tab = rankTab, kind = rankKind){
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
   if ($('tt')) $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
 }
-$('rank').onclick = () => { Sfx.click(); peringkat('player', 'day'); };
+if ($('rank')) $('rank').onclick = () => { Sfx.click(); peringkat('player', 'day'); };
 
 // ---------- Cari tempat & lokasiku ----------
-$('btn-search-toggle').onclick = () => {
+if ($('btn-search-toggle')) $('btn-search-toggle').onclick = () => {
   Sfx.click();
   const d = $('search-drawer');
-  d.classList.toggle('open');
-  const isOpen = d.classList.contains('open');
-  if (isOpen) $('q').focus();
-  if ($('zoom-banner')) $('zoom-banner').style.visibility = isOpen ? 'hidden' : '';
+  if (d) {
+    d.classList.toggle('open');
+    const isOpen = d.classList.contains('open');
+    if (isOpen && $('q')) $('q').focus();
+    if ($('zoom-banner')) $('zoom-banner').style.visibility = isOpen ? 'hidden' : '';
+  }
 };
-$('btn-search-close').onclick = () => {
+if ($('btn-search-close')) $('btn-search-close').onclick = () => {
   Sfx.click();
-  $('search-drawer').classList.remove('open');
+  if ($('search-drawer')) $('search-drawer').classList.remove('open');
   if ($('zoom-banner')) $('zoom-banner').style.visibility = '';
 };
 
 async function cari(){
+  if (!$('q')) return;
   const q = $('q').value.trim(); if (!q) return;
   try {
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=id&q=' + encodeURIComponent(q));
     const d = await r.json();
     if (!d.length) return toast('Tempat tidak ditemukan di Indonesia');
     map.setView([+d[0].lat, +d[0].lon], 17);
-    $('search-drawer').classList.remove('open');
+    if ($('search-drawer')) $('search-drawer').classList.remove('open');
     if ($('zoom-banner')) $('zoom-banner').style.visibility = '';
   } catch { toast('Pencarian gagal. Coba lagi sebentar lagi.'); }
 }
-$('cari').onclick = () => { Sfx.click(); cari(); };
-$('q').onkeydown = e => { if (e.key === 'Enter') cari(); };
-$('loc').onclick = () => {
+if ($('cari')) $('cari').onclick = () => { Sfx.click(); cari(); };
+if ($('q')) $('q').onkeydown = e => { if (e.key === 'Enter') cari(); };
+if ($('loc')) $('loc').onclick = () => {
   Sfx.click();
   if (!navigator.geolocation) return toast('Perangkat ini tidak mendukung lokasi');
   navigator.geolocation.getCurrentPosition(p => {
