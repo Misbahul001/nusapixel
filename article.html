@@ -104,16 +104,24 @@
       color: var(--accent);
     }
 
-    .brand-tag {
-      font-family: var(--font-mono);
+    .btn-canvas-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-size: 0.775rem;
       font-weight: 700;
-      color: var(--text-main);
-      text-decoration: none;
-      background: var(--surface-subtle);
-      padding: 3px 8px;
+      color: #0b2918;
+      background: #69F0AE;
+      border: 1px solid #2ecc71;
+      padding: 4px 10px;
       border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
+      text-decoration: none;
+      transition: all 150ms ease;
+    }
+
+    .btn-canvas-nav:hover {
+      background: #00E676;
+      transform: translateY(-1px);
     }
 
     /* Article Header (Compact & Static, Never Sticky) */
@@ -398,7 +406,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           Kembali ke Jurnal
         </a>
-        <a href="/blog" class="brand-tag">NusaPixel Editorial</a>
+        <a href="/game" class="btn-canvas-nav">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          Kanvas Game
+        </a>
       </div>
     </div>
   </header>
