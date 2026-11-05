@@ -422,7 +422,7 @@
       try {
         const { data, error } = await sb
           .from('articles')
-          .select('id, slug, title, meta_description, category, featured_image, reading_time, published_at')
+          .select('id, slug, title, meta_description, category, featured_image, reading_time, published_at, views')
           .eq('is_published', true)
           .order('published_at', { ascending: false });
 
@@ -475,7 +475,7 @@
               <h2 class="card-title">${escapeHtml(item.title)}</h2>
               <p class="card-excerpt">${escapeHtml(item.meta_description || '')}</p>
               <div class="card-footer">
-                <span>${dateStr}</span>
+                <span>${dateStr} • ${item.views || 0} dibaca</span>
                 <span>Baca Selengkapnya →</span>
               </div>
             </div>

@@ -428,6 +428,8 @@
           <span id="articleDate">5 Nov 2026</span>
           <span>•</span>
           <span id="articleReadTime">4 menit baca</span>
+          <span>•</span>
+          <span id="articleViews">1x dibaca</span>
         </div>
         
         <h1 id="articleTitle" class="article-title"></h1>
@@ -505,6 +507,8 @@
         if (error || !data) throw error || new Error('Not found');
 
         renderArticleData(data);
+        // Increment real-time view counter in Supabase
+        sb.rpc('increment_article_views', { article_slug: slug });
       } catch (err) {
         console.error('Fetch error:', err);
         document.getElementById('articleLoader').innerHTML = `
@@ -534,6 +538,8 @@
       document.getElementById('articleTitle').innerText = article.title;
       document.getElementById('articleCategory').innerText = article.category || 'Teknologi';
       document.getElementById('articleReadTime').innerText = `${article.reading_time || 4} mnt baca`;
+      const currentViews = (article.views || 0) + 1;
+      document.getElementById('articleViews').innerText = `${currentViews}x dibaca`;
 
       if (article.published_at) {
         const d = new Date(article.published_at);
