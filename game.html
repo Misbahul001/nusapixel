@@ -979,6 +979,101 @@ button.m:disabled{opacity:0.65;cursor:not-allowed !important;transform:none !imp
 
 @keyframes voxelDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes voxelPop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ==============================================================================
+   AVATAR / KARAKTER PELUKIS DI PETA (CSS Hardware Accelerated)
+   ============================================================================== */
+.avatar-leaflet-div {
+  background: transparent !important;
+  border: none !important;
+  pointer-events: none !important;
+}
+.avatar-marker-wrap {
+  position: relative;
+  width: 54px;
+  height: 64px;
+  pointer-events: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  transition: opacity 0.3s ease;
+}
+.avatar-sprite {
+  width: 36px;
+  height: 42px;
+  display: block;
+  flex-shrink: 0;
+  transform-origin: bottom center;
+}
+.avatar-marker-wrap.is-idle .avatar-sprite {
+  animation: avatarBreathe 2s ease-in-out infinite;
+}
+.avatar-marker-wrap.is-drawing .avatar-brush-arm {
+  transform-origin: 6px 22px;
+  animation: avatarBrushSwing 0.22s ease-in-out infinite alternate;
+}
+@keyframes avatarBrushSwing {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-45deg) translate(-3px, -2px); }
+}
+@keyframes avatarBreathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.avatar-nametag {
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  border: 1.5px solid #38bdf8;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+.avatar-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+.avatar-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 6px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 50%;
+  filter: blur(1px);
+}
+.avatar-splash-bubble {
+  position: absolute;
+  top: 14px;
+  left: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: avatarSplash 0.4s ease-out forwards;
+}
+@keyframes avatarSplash {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-8px, -8px) scale(1.6); }
+}
 </style>
 </head>
 <body>
@@ -1160,6 +1255,10 @@ button.m:disabled{opacity:0.65;cursor:not-allowed !important;transform:none !imp
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
         <span class="v-label">GRID</span>
       </button>
+      <button class="voxel-btn dock-tool active" id="btn-avatar-toggle" title="Karakter Pelukis di Peta (ON/OFF)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="v-label">AVATAR</span>
+      </button>
       <button class="voxel-btn dock-tool" id="btn-template" title="Hamparan Template Gambar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
         <span class="v-label">TEMPLATE</span>
@@ -1258,7 +1357,8 @@ let me = {
   ads_today: 0,
   nick: 'Pemain',
   avatar_url: null,
-  avatar_color: '#38bdf8'
+  avatar_color: '#38bdf8',
+  avatar_skin: (typeof localStorage !== 'undefined' && localStorage.getItem('np_avatar_skin')) || 'painter'
 };
 try {
   const cached = localStorage.getItem('np_cached_me');
@@ -1982,6 +2082,18 @@ function initUI() {
         $('btn-grid').classList.toggle('on', showGrid);
         if (typeof linesGrid !== 'undefined' && linesGrid.redraw) linesGrid.redraw();
         toast(showGrid ? 'Garis grid bantuan diaktifkan' : 'Garis grid bantuan dinonaktifkan');
+      };
+    }
+
+    if ($('btn-avatar-toggle')) {
+      $('btn-avatar-toggle').onclick = () => {
+        Sfx.click();
+        if (typeof AvatarManager !== 'undefined') {
+          const isOn = AvatarManager.toggle();
+          $('btn-avatar-toggle').classList.toggle('active', isOn);
+          $('btn-avatar-toggle').classList.toggle('on', isOn);
+          toast(isOn ? 'Karakter pelukis diaktifkan di peta' : 'Karakter pelukis dinonaktifkan');
+        }
       };
     }
 
@@ -3149,6 +3261,7 @@ function syncRealtimeChannels(visibleChunks, z) {
       const ch = sb.channel(topic)
         .on('broadcast', { event: 'pixels' }, payload => {
           const list = payload.payload?.p || [];
+          const sender = payload.payload?.sender;
           let changed = false;
           list.forEach(item => {
             const k = key(item.x, item.y);
@@ -3160,6 +3273,14 @@ function syncRealtimeChannels(visibleChunks, z) {
             }
           });
           if (changed) redraw();
+
+          // Tampilkan karakter pemain lain yang sedang menggambar di chunk ini
+          if (sender && sender.id && sender.id !== me.id && list.length > 0 && typeof AvatarManager !== 'undefined') {
+            const lastPx = list[list.length - 1];
+            if (lastPx && typeof lastPx.x === 'number') {
+              AvatarManager.updateRemote(sender.id, lastPx.x, lastPx.y, sender.c ?? lastPx.c ?? 0, sender.nick, sender.team, sender.skin, true);
+            }
+          }
         })
         .subscribe();
       activeChunkChannels.set(c.k, ch);
@@ -3177,13 +3298,21 @@ function broadcastChunkPixels(pixelList, isDelete = false) {
     groups.get(ck).push(isDelete ? { x: p.x, y: p.y, del: true } : { x: p.x, y: p.y, c: p.c });
   });
 
+  const senderInfo = {
+    id: me.id || 'me',
+    nick: me.nick || 'Pemain',
+    team: me.team_name || '',
+    skin: me.avatar_skin || 'painter',
+    c: col
+  };
+
   for (const [ck, list] of groups.entries()) {
     const ch = activeChunkChannels.get(ck);
     if (ch) {
       ch.send({
         type: 'broadcast',
         event: 'pixels',
-        payload: { p: list }
+        payload: { p: list, sender: senderInfo }
       });
     }
   }
@@ -3801,10 +3930,12 @@ function updateAccountButtonTheme() {
 function setMe(d){
   const prevAvatar = (me && me.avatar_url) || localStorage.getItem('np_user_avatar');
   const prevColor = (me && me.avatar_color) || localStorage.getItem('np_user_avatar_color');
+  const prevSkin = (me && me.avatar_skin) || localStorage.getItem('np_avatar_skin') || 'painter';
   const assignedT = (d && d.t) ? Number(d.t) : ((me && me.t) ? Number(me.t) : Date.now());
   me = {...d, t: assignedT};
   if (prevAvatar && !me.avatar_url) me.avatar_url = prevAvatar;
   if (prevColor && !me.avatar_color) me.avatar_color = prevColor;
+  if (!me.avatar_skin) me.avatar_skin = prevSkin;
   try { localStorage.setItem('np_cached_me', JSON.stringify(me)); } catch (e) {}
   if (SB_URL.includes('PROJECT-ID')) {
     try { localStorage.setItem('np_demo_me', JSON.stringify(me)); } catch (e) {}
@@ -3838,6 +3969,290 @@ function lineBresenham(x0, y0, x1, y1) {
   return points;
 }
 
+// ==============================================================================
+// SISTEM KARAKTER PELUKIS DI PETA (Player Avatar System)
+// ==============================================================================
+const AVATAR_SKINS = {
+  painter: { id: 'painter', name: 'Si Pelukis', icon: '👨‍🎨', desc: 'Pelukis klasik dengan topi baret biru & kuas kayu besar.' },
+  adventurer: { id: 'adventurer', name: 'Petualang', icon: '🤠', desc: 'Penjelajah Nusantara bertopi rimba & roller cat bambu.' },
+  cat: { id: 'cat', name: 'Kucing Pixel', icon: '🐱', desc: 'Kucing lucu yang mencoletkan cat dengan kuas mungil.' },
+  robot: { id: 'robot', name: 'Robot Droid', icon: '🤖', desc: 'Droid modern dengan semprotan warna presisi tinggi.' },
+  garuda: { id: 'garuda', name: 'Ksatria Garuda', icon: '🦅', desc: 'Ksatria pelindung bertopi mahkota emas & pena bulu.' }
+};
+
+const avatarLayer = L.layerGroup().addTo(map);
+
+const AvatarManager = (() => {
+  let enabled = true;
+  try {
+    const saved = localStorage.getItem('np_show_avatars');
+    if (saved !== null) enabled = (saved !== 'false');
+  } catch (e) {}
+
+  let localMarker = null;
+  let localIdleTimer = null;
+  let lastLocalPos = null;
+  const remoteAvatars = new Map(); // id -> { marker, timer, x, y }
+
+  function getSkinSvg(skinId, colorHex) {
+    const c = colorHex || '#38bdf8';
+    switch (skinId) {
+      case 'adventurer':
+        return `
+          <svg class="avatar-sprite" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="18" cy="11" rx="13" ry="4" fill="#78350f"/>
+            <path d="M11 11 C11 5 25 5 25 11 Z" fill="#b45309"/>
+            <circle cx="18" cy="17" r="7.5" fill="#fed7aa"/>
+            <circle cx="15.5" cy="17" r="1.3" fill="#0f172a"/>
+            <circle cx="20.5" cy="17" r="1.3" fill="#0f172a"/>
+            <rect x="13" y="24" width="10" height="10" rx="3" fill="#854d0e"/>
+            <rect x="15" y="25" width="6" height="8" fill="#fef08a"/>
+            <rect x="13" y="34" width="4" height="4" rx="1.5" fill="#451a03"/>
+            <rect x="19" y="34" width="4" height="4" rx="1.5" fill="#451a03"/>
+            <g class="avatar-brush-arm">
+              <rect x="6" y="22" width="8" height="3" rx="1.5" fill="#fed7aa"/>
+              <rect x="0" y="17" width="8" height="3" rx="1" fill="#a16207" transform="rotate(-30 4 18)"/>
+              <rect x="-3" y="14" width="6" height="6" rx="2" fill="${c}"/>
+            </g>
+          </svg>`;
+      case 'cat':
+        return `
+          <svg class="avatar-sprite" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="10,6 14,13 8,13" fill="#ea580c"/>
+            <polygon points="10.5,8 13,12 9,12" fill="#fbcfe8"/>
+            <polygon points="26,6 22,13 28,13" fill="#ea580c"/>
+            <polygon points="25.5,8 23,12 27,12" fill="#fbcfe8"/>
+            <circle cx="18" cy="17" r="8" fill="#ffedd5"/>
+            <ellipse cx="14.5" cy="16" rx="1.5" ry="2" fill="#0284c7"/>
+            <ellipse cx="21.5" cy="16" rx="1.5" ry="2" fill="#0284c7"/>
+            <polygon points="17.5,19 18.5,19 18,20" fill="#f43f5e"/>
+            <line x1="11" y1="18" x2="6" y2="17" stroke="#cbd5e1" stroke-width="1.2"/>
+            <line x1="25" y1="18" x2="30" y2="17" stroke="#cbd5e1" stroke-width="1.2"/>
+            <rect x="13" y="24" width="10" height="10" rx="4" fill="#fb923c"/>
+            <path d="M23 30 Q29 27 27 22" stroke="#ea580c" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <rect x="13" y="34" width="4" height="4" rx="1.5" fill="#ffedd5"/>
+            <rect x="19" y="34" width="4" height="4" rx="1.5" fill="#ffedd5"/>
+            <g class="avatar-brush-arm">
+              <rect x="6" y="23" width="8" height="3" rx="1.5" fill="#ffedd5"/>
+              <rect x="-2" y="19" width="9" height="2.5" rx="1" fill="#78350f" transform="rotate(-30 2 20)"/>
+              <path d="M-5 16 L-1 18 L-4 21 Z" fill="${c}"/>
+            </g>
+          </svg>`;
+      case 'robot':
+        return `
+          <svg class="avatar-sprite" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line x1="18" y1="9" x2="18" y2="4" stroke="#64748b" stroke-width="2.5"/>
+            <circle cx="18" cy="3" r="2.5" fill="#22d3ee"/>
+            <rect x="11" y="9" width="14" height="12" rx="3.5" fill="#334155"/>
+            <rect x="13" y="13" width="10" height="4" rx="2" fill="#06b6d4"/>
+            <rect x="12" y="23" width="12" height="11" rx="2.5" fill="#1e293b"/>
+            <rect x="13" y="34" width="4" height="4" rx="1" fill="#64748b"/>
+            <rect x="19" y="34" width="4" height="4" rx="1" fill="#64748b"/>
+            <g class="avatar-brush-arm">
+              <rect x="5" y="23" width="9" height="3" rx="1" fill="#64748b"/>
+              <rect x="-2" y="18" width="7" height="10" rx="1.5" fill="#475569" transform="rotate(-15 1 20)"/>
+              <circle cx="-1" cy="15" r="2.5" fill="${c}"/>
+            </g>
+          </svg>`;
+      case 'garuda':
+        return `
+          <svg class="avatar-sprite" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 8 L18 2 L22 8 Z" fill="#f59e0b"/>
+            <circle cx="18" cy="15" r="7.5" fill="#fed7aa"/>
+            <circle cx="15.5" cy="15" r="1.3" fill="#0f172a"/>
+            <circle cx="20.5" cy="15" r="1.3" fill="#0f172a"/>
+            <path d="M7 19 Q2 14 7 10 Z" fill="#fbbf24"/>
+            <path d="M29 19 Q34 14 29 10 Z" fill="#fbbf24"/>
+            <rect x="13" y="23" width="10" height="11" rx="3" fill="#b45309"/>
+            <rect x="13" y="34" width="4" height="4" rx="1.5" fill="#78350f"/>
+            <rect x="19" y="34" width="4" height="4" rx="1.5" fill="#78350f"/>
+            <g class="avatar-brush-arm">
+              <rect x="6" y="22" width="8" height="3" rx="1.5" fill="#fed7aa"/>
+              <path d="M-3 15 Q3 20 8 23" stroke="#f59e0b" stroke-width="3" fill="none"/>
+              <circle cx="-3" cy="14" r="2.5" fill="${c}"/>
+            </g>
+          </svg>`;
+      case 'painter':
+      default:
+        return `
+          <svg class="avatar-sprite" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 13 C10 6 26 6 26 13 Z" fill="#2563eb"/>
+            <circle cx="18" cy="6" r="2" fill="#ef4444"/>
+            <circle cx="18" cy="16" r="7.5" fill="#fed7aa"/>
+            <circle cx="15.5" cy="16" r="1.3" fill="#0f172a"/>
+            <circle cx="20.5" cy="16" r="1.3" fill="#0f172a"/>
+            <rect x="13" y="23" width="10" height="11" rx="3" fill="#f8fafc"/>
+            <rect x="15" y="25" width="6" height="8" rx="2" fill="#3b82f6"/>
+            <rect x="13" y="34" width="4" height="4" rx="1.5" fill="#475569"/>
+            <rect x="19" y="34" width="4" height="4" rx="1.5" fill="#475569"/>
+            <g class="avatar-brush-arm">
+              <rect x="6" y="22" width="8" height="3" rx="1.5" fill="#fed7aa"/>
+              <rect x="-3" y="18" width="10" height="2.5" rx="1" fill="#78350f" transform="rotate(-30 2 19)"/>
+              <path d="M-6 15 L-2 17 L-5 20 Z" fill="${c}"/>
+            </g>
+          </svg>`;
+    }
+  }
+
+  function createMarkerHtml(nick, team, skinId, colorHex, isLocal, isDrawing) {
+    const skinSvg = getSkinSvg(skinId, colorHex);
+    const tagBorder = colorHex || '#38bdf8';
+    const teamBadge = team ? `<span style="opacity:0.85;font-size:8.5px;background:rgba(255,255,255,0.18);padding:0 4px;border-radius:3px">${esc(team)}</span>` : '';
+    const statusText = isLocal ? 'Kamu' : esc(nick || 'Pemain');
+
+    return `
+      <div class="avatar-marker-wrap ${isDrawing ? 'is-drawing' : 'is-idle'}" id="${isLocal ? 'avatar-local-wrap' : ''}">
+        <div class="avatar-nametag" style="border-color:${tagBorder}">
+          <span class="avatar-tag-dot" style="background:${colorHex || '#38bdf8'}"></span>
+          <span>${statusText}</span>
+          ${teamBadge}
+        </div>
+        <div class="avatar-shadow"></div>
+        ${skinSvg}
+        ${isDrawing ? `<span class="avatar-splash-bubble" style="background:${colorHex || '#38bdf8'}"></span>` : ''}
+      </div>
+    `;
+  }
+
+  function updateLocal(x, y, colorIdx, isDrawing) {
+    if (!enabled || Math.round(map.getZoom()) < 15) return;
+    try {
+      const lat = (y + 0.35) * CELL;
+      const lng = (x + 1.25) * CELL;
+      lastLocalPos = { x, y, colorIdx };
+      const colorHex = PAL[colorIdx] || '#38bdf8';
+      const skinId = me.avatar_skin || 'painter';
+
+      if (!localMarker) {
+        const icon = L.divIcon({
+          className: 'avatar-leaflet-div',
+          html: createMarkerHtml(me.nick, me.team_name, skinId, colorHex, true, isDrawing),
+          iconSize: [54, 64],
+          iconAnchor: [27, 60]
+        });
+        localMarker = L.marker([lat, lng], { icon, interactive: false });
+        avatarLayer.addLayer(localMarker);
+      } else {
+        localMarker.setLatLng([lat, lng]);
+        const wrap = document.getElementById('avatar-local-wrap');
+        if (wrap) {
+          if (isDrawing) {
+            wrap.classList.add('is-drawing');
+            wrap.classList.remove('is-idle');
+          } else {
+            wrap.classList.remove('is-drawing');
+            wrap.classList.add('is-idle');
+          }
+        }
+      }
+
+      if (isDrawing) {
+        if (localIdleTimer) clearTimeout(localIdleTimer);
+        localIdleTimer = setTimeout(() => {
+          const wrap = document.getElementById('avatar-local-wrap');
+          if (wrap) {
+            wrap.classList.remove('is-drawing');
+            wrap.classList.add('is-idle');
+          }
+        }, 1600);
+      }
+    } catch (e) {
+      console.warn('Avatar local update error:', e);
+    }
+  }
+
+  function updateRemote(id, x, y, colorIdx, nick, team, skinId, isDrawing) {
+    if (!enabled || Math.round(map.getZoom()) < 15) return;
+    try {
+      const lat = (y + 0.35) * CELL;
+      const lng = (x + 1.25) * CELL;
+      const colorHex = (typeof colorIdx === 'number' ? PAL[colorIdx] : colorIdx) || '#38bdf8';
+      const skin = skinId || 'painter';
+
+      let entry = remoteAvatars.get(id);
+      if (!entry) {
+        const icon = L.divIcon({
+          className: 'avatar-leaflet-div',
+          html: createMarkerHtml(nick, team, skin, colorHex, false, isDrawing),
+          iconSize: [54, 64],
+          iconAnchor: [27, 60]
+        });
+        const marker = L.marker([lat, lng], { icon, interactive: false });
+        avatarLayer.addLayer(marker);
+
+        entry = { marker, timer: null };
+        remoteAvatars.set(id, entry);
+      } else {
+        entry.marker.setLatLng([lat, lng]);
+      }
+
+      if (entry.timer) clearTimeout(entry.timer);
+      entry.timer = setTimeout(() => {
+        if (entry.marker) avatarLayer.removeLayer(entry.marker);
+        remoteAvatars.delete(id);
+      }, 25000);
+    } catch (e) {
+      console.warn('Avatar remote update error:', e);
+    }
+  }
+
+  function checkZoom() {
+    try {
+      const z = Math.round(map.getZoom());
+      if (z < 15) {
+        avatarLayer.clearLayers();
+        localMarker = null;
+        remoteAvatars.clear();
+      } else if (enabled && lastLocalPos && !localMarker) {
+        updateLocal(lastLocalPos.x, lastLocalPos.y, lastLocalPos.colorIdx, false);
+      }
+    } catch (e) {}
+  }
+
+  function setSkin(skinId) {
+    if (!AVATAR_SKINS[skinId]) return;
+    me.avatar_skin = skinId;
+    try { localStorage.setItem('np_avatar_skin', skinId); } catch (e) {}
+    if (localMarker && lastLocalPos) {
+      avatarLayer.removeLayer(localMarker);
+      localMarker = null;
+      updateLocal(lastLocalPos.x, lastLocalPos.y, lastLocalPos.colorIdx, false);
+    }
+  }
+
+  function toggle() {
+    enabled = !enabled;
+    try { localStorage.setItem('np_show_avatars', String(enabled)); } catch (e) {}
+    if (!enabled) {
+      avatarLayer.clearLayers();
+      localMarker = null;
+      remoteAvatars.clear();
+    } else if (lastLocalPos) {
+      updateLocal(lastLocalPos.x, lastLocalPos.y, lastLocalPos.colorIdx, false);
+    }
+    return enabled;
+  }
+
+  map.on('zoomend', checkZoom);
+
+  return {
+    updateLocal,
+    updateRemote,
+    onLocalTarget: (x, y, c, d) => updateLocal(x, y, c, d),
+    onLocalDrawEnd: () => {
+      const wrap = document.getElementById('avatar-local-wrap');
+      if (wrap) {
+        wrap.classList.remove('is-drawing');
+        wrap.classList.add('is-idle');
+      }
+    },
+    setSkin,
+    toggle,
+    isEnabled: () => enabled,
+    checkZoom
+  };
+})();
+
 // ---------- Pratinjau Sel (Step 8: Cursor & Touch Highlight) ----------
 const cellPreview = L.rectangle([[0, 0], [0, 0]], {
   color: '#ffffff',
@@ -3860,6 +4275,10 @@ function updateCellPreview(x, y) {
     color: activeMode === 'pipette' ? '#38bdf8' : (activeMode === 'info' ? '#c084fc' : '#ffffff')
   });
   if (!map.hasLayer(cellPreview)) cellPreview.addTo(map);
+
+  if (typeof AvatarManager !== 'undefined') {
+    AvatarManager.onLocalTarget(x, y, col, isDrawing);
+  }
 }
 
 // ---------- Logika Pemasangan & Penghapusan Pixel ----------
@@ -4332,6 +4751,7 @@ function handleDrawMove(latlng) {
 }
 
 function handleDrawEnd() {
+  if (typeof AvatarManager !== 'undefined') AvatarManager.onLocalDrawEnd();
   if (isDrawing || currentStroke.length > 0) {
     isDrawing = false;
     if (currentStroke.length > 0) {
@@ -4631,6 +5051,18 @@ if ($('btn-grid')) {
     $('btn-grid').classList.toggle('on', showGrid);
     linesGrid.redraw();
     toast(showGrid ? 'Garis grid bantuan diaktifkan' : 'Garis grid bantuan dinonaktifkan');
+  };
+}
+
+if ($('btn-avatar-toggle')) {
+  $('btn-avatar-toggle').onclick = () => {
+    Sfx.click();
+    if (typeof AvatarManager !== 'undefined') {
+      const isOn = AvatarManager.toggle();
+      $('btn-avatar-toggle').classList.toggle('active', isOn);
+      $('btn-avatar-toggle').classList.toggle('on', isOn);
+      toast(isOn ? 'Karakter pelukis diaktifkan di peta' : 'Karakter pelukis dinonaktifkan');
+    }
   };
 }
 
@@ -4997,6 +5429,33 @@ function panel(tab){
         </div>
       </div>
 
+      <!-- Pilihan Karakter Pelukis di Peta -->
+      <div style="background:rgba(0,0,0,0.22);border:1.5px solid var(--voxel-border);border-radius:10px;padding:10px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px">
+            <span>🎨</span> Karakter Pelukis di Peta
+          </div>
+          <span style="font-size:10px;color:var(--ac);font-weight:800">${(AVATAR_SKINS[me.avatar_skin || 'painter'] || AVATAR_SKINS.painter).name}</span>
+        </div>
+        <small style="color:var(--mut);display:block;font-size:10px;line-height:1.3;margin-bottom:8px">
+          Pilih karakter yang akan berdiri dan melukis di samping pixel Anda di peta:
+        </small>
+        <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:5px;margin-bottom:6px">
+          ${Object.values(AVATAR_SKINS).map(sk => {
+            const isSel = (me.avatar_skin || 'painter') === sk.id;
+            return `
+              <div class="voxel-island avatar-skin-card" data-skin="${sk.id}" style="padding:6px 2px;text-align:center;cursor:pointer;border:1.5px solid ${isSel ? 'var(--ac)' : 'var(--voxel-border)'};background:${isSel ? 'rgba(74,222,128,0.15)' : 'rgba(0,0,0,0.3)'};border-radius:8px;transition:all 0.15s ease" title="${sk.desc}">
+                <div style="font-size:20px;line-height:1.1">${sk.icon}</div>
+                <div style="font-size:9.5px;font-weight:900;color:${isSel ? 'var(--ac)' : '#cbd5e1'};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sk.name.split(' ')[0]}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div style="font-size:9.5px;color:var(--mut);font-style:italic;line-height:1.3">
+          💡 ${(AVATAR_SKINS[me.avatar_skin || 'painter'] || AVATAR_SKINS.painter).desc}
+        </div>
+      </div>
+
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-size:12px;font-weight:900;color:#cbd5e1">Koleksi Lencana (${earnedCount}/${BADGES_DEF.length})</div>
         <small style="font-size:10px;color:var(--mut)">Klaim lencana untuk memasang di profil</small>
@@ -5092,6 +5551,21 @@ function panel(tab){
         e.stopPropagation();
         const bid = btn.getAttribute('data-bid');
         if (bid) claimBadge(bid);
+      };
+    });
+
+    // Wire avatar skin cards
+    document.querySelectorAll('.avatar-skin-card').forEach(card => {
+      card.onclick = (e) => {
+        e.stopPropagation();
+        Sfx.click();
+        const skinId = card.getAttribute('data-skin');
+        if (skinId && typeof AvatarManager !== 'undefined') {
+          AvatarManager.setSkin(skinId);
+          const sk = AVATAR_SKINS[skinId];
+          toast(`Karakter pelukis diubah ke: ${sk ? sk.name : skinId}!`);
+          panel('profile');
+        }
       };
     });
 
