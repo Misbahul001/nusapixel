@@ -624,7 +624,7 @@
         if (related && related.length > 0) {
           const grid = document.getElementById('relatedArticlesGrid');
           grid.innerHTML = related.map(item => `
-            <a href="/article?slug=${encodeURIComponent(item.slug)}" class="related-card">
+            <a href="/baca/${encodeURIComponent(item.slug)}" class="related-card">
               <div>
                 <div class="related-card-cat">${escapeHtml(item.category || 'Teknologi')}</div>
                 <div class="related-card-title">${escapeHtml(item.title)}</div>
@@ -647,14 +647,15 @@
       document.getElementById('articleLoader').style.display = 'none';
       document.getElementById('articleWrapper').style.display = 'block';
 
+      const cleanUrl = `https://www.nusapixel.xyz/baca/${encodeURIComponent(article.slug)}`;
       // Meta & Titles
       document.title = `${article.title} — NusaPixel`;
       document.getElementById('pageTitle').innerText = `${article.title} — NusaPixel`;
       document.getElementById('metaDesc').content = article.meta_description || '';
       document.getElementById('ogTitle').content = article.title;
       document.getElementById('ogDesc').content = article.meta_description || '';
-      document.getElementById('canonicalUrl').href = window.location.href;
-      document.getElementById('ogUrl').content = window.location.href;
+      document.getElementById('canonicalUrl').href = cleanUrl;
+      document.getElementById('ogUrl').content = cleanUrl;
       if (article.featured_image) {
         document.getElementById('ogImage').content = article.featured_image;
       }

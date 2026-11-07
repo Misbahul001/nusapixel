@@ -2,68 +2,80 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.nusapixel.xyz/</loc>
-    <lastmod>2026-11-06</lastmod>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://www.nusapixel.xyz/blog</loc>
-    <lastmod>2026-11-06</lastmod>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://www.nusapixel.xyz/game</loc>
-    <lastmod>2026-11-06</lastmod>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=starlink-bangun-jaringan-5g-saingi-operator-seluler</loc>
+    <loc>https://www.nusapixel.xyz/baca/cara-melihat-wa-disadap-dan-mengamankan-whatsapp</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.nusapixel.xyz/baca/cara-menghilangkan-iklan-di-hp-tiba-tiba-muncul-tanpa-aplikasi</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.nusapixel.xyz/baca/starlink-bangun-jaringan-5g-saingi-operator-seluler</loc>
     <lastmod>2026-11-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=cara-membuat-foto-ai-realistis-gratis-di-hp</loc>
+    <loc>https://www.nusapixel.xyz/baca/cara-membuat-foto-ai-realistis-gratis-di-hp</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=cara-membersihkan-cache-dan-file-sampah-android</loc>
+    <loc>https://www.nusapixel.xyz/baca/cara-membersihkan-cache-dan-file-sampah-android</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=hp-luncurkan-omnibook-5-baru-cek-spek-dan-harganya</loc>
+    <loc>https://www.nusapixel.xyz/baca/hp-luncurkan-omnibook-5-baru-cek-spek-dan-harganya</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=ray-ban-meta-masuk-indonesia-harga-fitur-privasi</loc>
+    <loc>https://www.nusapixel.xyz/baca/ray-ban-meta-masuk-indonesia-harga-fitur-privasi</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=10-cara-untuk-menjaga-data-pribadi-di-internet</loc>
+    <loc>https://www.nusapixel.xyz/baca/10-cara-untuk-menjaga-data-pribadi-di-internet</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=nubia-a77-5g-dirilis-gandeng-smartfren-beri-kuota-gratis-2-tahun</loc>
+    <loc>https://www.nusapixel.xyz/baca/nubia-a77-5g-dirilis-gandeng-smartfren-beri-kuota-gratis-2-tahun</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.nusapixel.xyz/article?slug=selamat-datang-di-nusapixel-jurnal</loc>
+    <loc>https://www.nusapixel.xyz/baca/selamat-datang-di-nusapixel-jurnal</loc>
     <lastmod>2026-11-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
 </urlset>
