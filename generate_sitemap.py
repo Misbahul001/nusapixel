@@ -559,7 +559,7 @@ def auto_push_to_vercel():
     env["GIT_CONFIG_NOSYSTEM"] = "1"
     try:
         subprocess.run(["git", "-C", ROOT_DIR, "config", "--global", "--add", "safe.directory", ROOT_DIR], env=env, check=False)
-        subprocess.run(["git", "-C", ROOT_DIR, "add", "baca/", "sitemap.xml", "rss.xml", "index.html", "blog.html", "article.html", "vercel.json", "generate_sitemap.py", f"{INDEXNOW_KEY}.txt"], env=env, check=False)
+        subprocess.run(["git", "-C", ROOT_DIR, "add", "baca/", "assets/blog/", "sitemap.xml", "rss.xml", "index.html", "blog.html", "article.html", "vercel.json", "generate_sitemap.py", f"{INDEXNOW_KEY}.txt"], env=env, check=False)
         status = subprocess.run(["git", "-C", ROOT_DIR, "status", "--porcelain"], env=env, stdout=subprocess.PIPE, text=True).stdout.strip()
         if status:
             subprocess.run(["git", "-C", ROOT_DIR, "commit", "-m", "feat(seo): pre-render static HTML articles (/baca/*), update sitemap & rss"], env=env, check=False)
