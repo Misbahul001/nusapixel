@@ -1094,7 +1094,7 @@ button.m:disabled{opacity:0.65;cursor:not-allowed !important;transform:none !imp
   </div>
 
   <div class="hud-actions">
-    <a href="index.html" class="voxel-btn hud-btn home" aria-label="Beranda" title="Kembali ke Beranda" style="text-decoration:none">
+    <a href="/" class="voxel-btn hud-btn home" aria-label="Beranda" title="Kembali ke Beranda" style="text-decoration:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     </a>
     <button class="voxel-btn hud-btn blue" id="btn-search-toggle" aria-label="Cari" title="Cari Tempat">
@@ -5785,7 +5785,7 @@ function panel(tab){
     <div class="row"><div><b>Aturan Komunitas</b><small>Pedoman bersama menjaga kanvas tetap tertib dan ramah</small></div>
       <button class="m" id="btn-rules" style="background:#475569;border-color:#64748b;color:#fff">Baca Aturan</button></div>
     <div class="row"><small>Misi dan hadiah harian diperbarui tiap tengah malam WIB.</small>
-      <div style="display:flex;gap:6px"><a href="beranda.html" class="m" style="text-decoration:none;display:inline-block;padding:8px 12px;background:#334155;border-color:#475569;color:#fff">Beranda</a>${isAdminUser ? '<a href="admin.html" class="m" style="text-decoration:none;display:inline-block;padding:8px 12px;background:#2563eb;border-color:#60a5fa;color:#fff">Admin</a>' : ''}</div></div>`;
+      <div style="display:flex;gap:6px"><a href="/" class="m" style="text-decoration:none;display:inline-block;padding:8px 12px;background:#334155;border-color:#475569;color:#fff">Beranda</a>${isAdminUser ? '<a href="/admin" class="m" style="text-decoration:none;display:inline-block;padding:8px 12px;background:#2563eb;border-color:#60a5fa;color:#fff">Admin</a>' : ''}</div></div>`;
   $('panel').style.display = 'block';
   if ($('btn-close-card')) $('btn-close-card').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
   if ($('tt')) $('tt').onclick = () => { Sfx.click(); $('panel').style.display = 'none'; };
